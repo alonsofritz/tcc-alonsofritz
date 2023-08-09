@@ -47,3 +47,4 @@ Tema: Programação Concorrente com Go, e um comparativo entre GO, C++ e Java, c
 - https://uwspace.uwaterloo.ca/handle/10012/14706
 - https://stanford-cs242.github.io/f17/assets/projects/2017/gsfisher-chrisyeh.pdf
 - https://www.ingentaconnect.com/content/ben/rascs/2021/00000014/00000006/art00027
+- https://medium.com/@isuruvihan/stateful-goroutines-efficient-concurrency-with-go-e6e0736b2342
