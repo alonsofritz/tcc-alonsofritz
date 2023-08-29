@@ -32,6 +32,7 @@ Tema: Programação Concorrente com Go, e um comparativo entre GO, C++ e Java, c
  
 ## Mais interessantes:
 - https://journal.universitasbumigora.ac.id/index.php/matrik/article/view/1325/1154
+- https://www.diva-portal.org/smash/get/diva2:1220262/FULLTEXT01.pdf
 - https://www.sjsu.edu/people/robert.chun/courses/cs159/s3/S.pdf
 - https://www.diva-portal.org/smash/get/diva2:824741/FULLTEXT03.pdf
 - https://www.csc.kth.se/utbildning/kth/kurser/DD143X/dkand11/Group9Alexander/Joakim_Anneback_Johan_Stjernberg.finalreport.2.pdf
@@ -39,6 +40,10 @@ Tema: Programação Concorrente com Go, e um comparativo entre GO, C++ e Java, c
 - https://stanford-cs242.github.io/f17/assets/projects/2017/gsfisher-chrisyeh.pdf
 
 ## Referencias
+- https://dl.acm.org/doi/abs/10.1145/3297858.3304069
+- https://ieeexplore.ieee.org/abstract/document/6920368
+- https://ieeexplore.ieee.org/abstract/document/10145271
+- 
 - https://www.diva-portal.org/smash/get/diva2:1701961/FULLTEXT01.pdf
 - https://books.google.com.br/books?hl=pt-BR&lr=&id=dulODwAAQBAJ&oi=fnd&pg=PP1&dq=golang+concurrency&ots=3x1Cnnnx4p&sig=LfR9lOJHrL_VsGU-7sF9wIfBKpQ#v=onepage&q=golang%20concurrency&f=false
 - 
