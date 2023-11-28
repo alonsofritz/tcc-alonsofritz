@@ -9,13 +9,13 @@ Tema: Programação Concorrente com Go, e um comparativo entre GO, C++ e Java, c
 	> deadlockse starvations
 
 # Artigos
-- Principal: (Understanding Real-World Concurrency Bugs in Go)[https://songlh.github.io/paper/go-study.pdf]
-- (TaxDC: A Taxonomy of Non-Deterministic Concurrency Bugs in Datacenter Distributed Systems)[https://dl.acm.org/doi/pdf/10.1145/2872362.2872374]
-- (Understanding and Generating High Quality Patches for Concurrency Bugs)[https://people.cs.uchicago.edu/~shanlu/paper/HFix_FSE2016.pdf]
-- (Learning from Mistakes — A Comprehensive Study on Real World Concurrency Bug Characteristics)[https://www.cs.columbia.edu/~junfeng/09fa-e6998/papers/concurrency-bugs.pdf]
+- Principal: [Understanding Real-World Concurrency Bugs in Go](https://songlh.github.io/paper/go-study.pdf)
+- [TaxDC: A Taxonomy of Non-Deterministic Concurrency Bugs in Datacenter Distributed Systems](https://dl.acm.org/doi/pdf/10.1145/2872362.2872374)
+- [Understanding and Generating High Quality Patches for Concurrency Bugs](https://people.cs.uchicago.edu/~shanlu/paper/HFix_FSE2016.pdf)
+- [Learning from Mistakes — A Comprehensive Study on Real World Concurrency Bug Characteristics](https://www.cs.columbia.edu/~junfeng/09fa-e6998/papers/concurrency-bugs.pdf)
 - 
-- (Communicating Sequential Processes)[https://www.cs.cmu.edu/~crary/819-f09/Hoare78.pdf]
-- (Concurrent Reading Writing)[https://lamport.azurewebsites.net/pubs/rd-wr.pdf]
+- [Communicating Sequential Processes](https://www.cs.cmu.edu/~crary/819-f09/Hoare78.pdf)
+- [Concurrent Reading Writing](https://lamport.azurewebsites.net/pubs/rd-wr.pdf)
 
 ## Notes
 Go defende tornar a criação de threads fácil e leve e usar a passagem de mensagens pela memória compartilhada para comunicação entre threads. Na verdade, vimos mais goroutines criadas em programas Go do que threads tradicionais e há usos significativos do canal Go e de outros mecanismos de passagem de mensagens. No entanto, nosso estudo mostra que, se não forem usadas corretamente, essas duas práticas de programação podem causar erros de simultaneidade. Memória compartilhada versus passagem de mensagens. Nosso estudo descobriu que a passagem de mensagens não torna necessariamente os programas multithread menos propensos a erros do que a memória compartilhada. Na verdade, a passagem de mensagens é a principal causa do bloqueio de bugs. Para piorar a situação, quando combinada com primitivas de sincronização tradicionais ou com outros novos recursos e bibliotecas de linguagem, a passagem de mensagens pode causar bugs de bloqueio que são muito difíceis de detectar. A passagem de mensagens causa menos bugs sem bloqueio do que a sincronização de memória compartilhada e, surpreendentemente, foi usada até para corrigir bugs causados por sincronização incorreta de memória compartilhada. Acreditamos que a passagem de mensagens oferece uma forma limpa de comunicação entre threads e pode ser útil na passagem de dados e sinais. Mas eles só são úteis se usados ​​corretamente, o que exige que os programadores não apenas entendam bem os mecanismos de passagem de mensagens, mas também outros mecanismos de sincronização do Go. Implicação na detecção de bugs. Nosso estudo revela muitos padrões de código com bugs que podem ser aproveitados para conduzir a detecção de bugs de simultaneidade. Como esforço preliminar, construímos um detector direcionado a bugs não bloqueadores causados por funções anônimas (por exemplo, Figura 8). Nosso detector já descobriu alguns novos bugs, um dos quais foi confirmado por desenvolvedores de aplicativos reais [12].
