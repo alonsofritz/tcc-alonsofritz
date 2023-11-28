@@ -8,52 +8,14 @@ Tema: Programação Concorrente com Go, e um comparativo entre GO, C++ e Java, c
 	> Sincronização por condicao logica
 	> deadlockse starvations
 
-- Linguagem Go
-	> Especificações Gerais da Linguagem, como utiliza-la e etc
-		* Packages, tipos de dados, controles de fluxo, interfaces e metodos, recursos para concorrencia, goroutines, escolanamento de goroutines, channels...
-
-- Funcionamento de Threads e Concorrencia em Linguagem C
-
-- Funcionamento de Threads e Concorrencia em Linguagem Java
-
-- Exemplos do Uso de Recursos de concorrencia do Go implementados em problemas clássicos de concorrencia, fazendo um paralelo a sua implementação utiliando C++ e Java
-	> Produtor Consumidor
-	> Leitores e Escritores
-	> Barbeiro Dorminhoco
-	> Programação Distribuida
-		* Aplicação Cliente/Servidor
-		* Chat
-
-- Avaliação de Desempenho em Go utilizando multiplicação de matrizes ou transformação de fourier(?)
-	> Codigo em Go
-	> comparação com C++ e Java
-	> otimizações de acesso a cache
-	> resultados dos timers
- 
-## Mais interessantes:
-- https://journal.universitasbumigora.ac.id/index.php/matrik/article/view/1325/1154
-- https://www.diva-portal.org/smash/get/diva2:1220262/FULLTEXT01.pdf
-- https://www.sjsu.edu/people/robert.chun/courses/cs159/s3/S.pdf
-- https://www.diva-portal.org/smash/get/diva2:824741/FULLTEXT03.pdf
-- https://www.csc.kth.se/utbildning/kth/kurser/DD143X/dkand11/Group9Alexander/Joakim_Anneback_Johan_Stjernberg.finalreport.2.pdf
-- https://www.csc.kth.se/utbildning/kandidatexjobb/datateknik/2011/rapport/anneback_joakim_OCH_stjernberg_johan_K11073.pdf
-- https://stanford-cs242.github.io/f17/assets/projects/2017/gsfisher-chrisyeh.pdf
-
-## Referencias
-- https://dl.acm.org/doi/abs/10.1145/3297858.3304069
-- https://ieeexplore.ieee.org/abstract/document/6920368
-- https://ieeexplore.ieee.org/abstract/document/10145271
+# Artigos
+- Principal: (Understanding Real-World Concurrency Bugs in Go)[https://songlh.github.io/paper/go-study.pdf]
+- (TaxDC: A Taxonomy of Non-Deterministic Concurrency Bugs in Datacenter Distributed Systems)[https://dl.acm.org/doi/pdf/10.1145/2872362.2872374]
+- (Understanding and Generating High Quality Patches for Concurrency Bugs)[https://people.cs.uchicago.edu/~shanlu/paper/HFix_FSE2016.pdf]
+- (Learning from Mistakes — A Comprehensive Study on Real World Concurrency Bug Characteristics)[https://www.cs.columbia.edu/~junfeng/09fa-e6998/papers/concurrency-bugs.pdf]
 - 
-- https://www.diva-portal.org/smash/get/diva2:1701961/FULLTEXT01.pdf
-- https://books.google.com.br/books?hl=pt-BR&lr=&id=dulODwAAQBAJ&oi=fnd&pg=PP1&dq=golang+concurrency&ots=3x1Cnnnx4p&sig=LfR9lOJHrL_VsGU-7sF9wIfBKpQ#v=onepage&q=golang%20concurrency&f=false
-- 
-- https://www.diva-portal.org/smash/get/diva2:1326869/FULLTEXT01.pdf
-- https://www.scaler.com/topics/golang/concurrency-in-golang/
-- 
-- https://uwspace.uwaterloo.ca/handle/10012/14706
-- https://stanford-cs242.github.io/f17/assets/projects/2017/gsfisher-chrisyeh.pdf
-- https://www.ingentaconnect.com/content/ben/rascs/2021/00000014/00000006/art00027
-- https://medium.com/@isuruvihan/stateful-goroutines-efficient-concurrency-with-go-e6e0736b2342
+- (Communicating Sequential Processes)[https://www.cs.cmu.edu/~crary/819-f09/Hoare78.pdf]
+- (Concurrent Reading Writing)[https://lamport.azurewebsites.net/pubs/rd-wr.pdf]
 
 ## Notes
 Go defende tornar a criação de threads fácil e leve e usar a passagem de mensagens pela memória compartilhada para comunicação entre threads. Na verdade, vimos mais goroutines criadas em programas Go do que threads tradicionais e há usos significativos do canal Go e de outros mecanismos de passagem de mensagens. No entanto, nosso estudo mostra que, se não forem usadas corretamente, essas duas práticas de programação podem causar erros de simultaneidade. Memória compartilhada versus passagem de mensagens. Nosso estudo descobriu que a passagem de mensagens não torna necessariamente os programas multithread menos propensos a erros do que a memória compartilhada. Na verdade, a passagem de mensagens é a principal causa do bloqueio de bugs. Para piorar a situação, quando combinada com primitivas de sincronização tradicionais ou com outros novos recursos e bibliotecas de linguagem, a passagem de mensagens pode causar bugs de bloqueio que são muito difíceis de detectar. A passagem de mensagens causa menos bugs sem bloqueio do que a sincronização de memória compartilhada e, surpreendentemente, foi usada até para corrigir bugs causados por sincronização incorreta de memória compartilhada. Acreditamos que a passagem de mensagens oferece uma forma limpa de comunicação entre threads e pode ser útil na passagem de dados e sinais. Mas eles só são úteis se usados ​​corretamente, o que exige que os programadores não apenas entendam bem os mecanismos de passagem de mensagens, mas também outros mecanismos de sincronização do Go. Implicação na detecção de bugs. Nosso estudo revela muitos padrões de código com bugs que podem ser aproveitados para conduzir a detecção de bugs de simultaneidade. Como esforço preliminar, construímos um detector direcionado a bugs não bloqueadores causados por funções anônimas (por exemplo, Figura 8). Nosso detector já descobriu alguns novos bugs, um dos quais foi confirmado por desenvolvedores de aplicativos reais [12].
