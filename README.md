@@ -9,7 +9,7 @@ Tema: Programação Concorrente com Go, e um comparativo entre GO, C++ e Java, c
 	> deadlockse starvations
 
 # Artigos
-- **[Understanding Real-World Concurrency Bugs in Go]**(https://songlh.github.io/paper/go-study.pdf)
+- [**Understanding Real-World Concurrency Bugs in Go**](https://songlh.github.io/paper/go-study.pdf)
 - [TaxDC: A Taxonomy of Non-Deterministic Concurrency Bugs in Datacenter Distributed Systems](https://dl.acm.org/doi/pdf/10.1145/2872362.2872374)
 - [Understanding and Generating High Quality Patches for Concurrency Bugs](https://people.cs.uchicago.edu/~shanlu/paper/HFix_FSE2016.pdf)
 - [Learning from Mistakes — A Comprehensive Study on Real World Concurrency Bug Characteristics](https://www.cs.columbia.edu/~junfeng/09fa-e6998/papers/concurrency-bugs.pdf)
