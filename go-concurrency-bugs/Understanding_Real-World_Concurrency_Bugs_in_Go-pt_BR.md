@@ -1,12 +1,12 @@
 Understanding Real-World Concurrency Bugs in Go
 
+## Abstract
+
 Go é uma linguagem de programação de tipagem estática que tem como objetivo fornecer uma maneira simples, eficiente e segura de construir software multithreaded. Desde a sua criação em 2009, o Go amadureceu e ganhou uma adoção significativa em software de produção e de código aberto. O Go advoga o uso de passagem de mensagens como meio de comunicação entre threads e fornece diversos novos mecanismos de concorrência e bibliotecas para facilitar a programação multithread. É importante compreender as implicações dessas novas propostas e a comparação entre passagem de mensagens e sincronização de memória compartilhada em termos de erros ou bugs de programa. Infelizmente, até onde sabemos, não houve nenhum estudo sobre os bugs de concorrência no Go.
 
-Neste artigo, realizamos o primeiro estudo sistemático sobre bugs de concorrência em programas Go reais. Estudamos seis softwares populares em Go, incluindo Docker, Kubernetes e gRPC. Analisamos um total de 171 bugs de concorrência, sendo que mais da metade deles foi causada por problemas não tradicionais específicos do Go. Além das causas raiz desses bugs, também estudamos suas correções, realizamos experimentos para reproduzi-los e os avaliamos com dois detectores de bugs Go disponíveis publicamente.
+Neste artigo, realizamos o primeiro estudo sistemático sobre bugs de concorrência em programas Go reais. Estudamos seis softwares populares em Go, incluindo Docker, Kubernetes e gRPC. Analisamos um total de 171 bugs de concorrência, sendo que mais da metade deles foi causada por problemas não tradicionais específicos do Go. Além das causas raiz desses bugs, também estudamos suas correções, realizamos experimentos para reproduzi-los e os avaliamos com dois detectores de bugs Go disponíveis publicamente. No geral, nosso estudo fornece uma melhor compreensão dos modelos de concorrência do Go e pode orientar futuros pesquisadores e profissionais na escrita de software Go melhor e mais confiável, bem como no desenvolvimento de ferramentas de depuração e diagnóstico para o Go.
 
-No geral, nosso estudo fornece uma melhor compreensão dos modelos de concorrência do Go e pode orientar futuros pesquisadores e profissionais na escrita de software Go melhor e mais confiável, bem como no desenvolvimento de ferramentas de depuração e diagnóstico para o Go.
-
-## Introducao
+## 1 Introducao
 
 O Go [20] é uma linguagem de programação de tipagem estática originalmente desenvolvida pelo Google em 2009. Nos últimos anos, ele rapidamente ganhou popularidade e agora é adotado por muitos tipos de software em produção real. Essas aplicações em Go abrangem desde bibliotecas [19] e software de alto nível [26] até software de infraestrutura em nuvem, como sistemas de contêineres [13, 36] e bancos de dados chave-valor [10, 15].
 
@@ -14,7 +14,9 @@ Um objetivo importante do design do Go é melhorar as linguagens de programaçã
 
 É crucial entender como as novas primitivas e mecanismos de concorrência do Go afetam os bugs de concorrência, que são os tipos de bugs mais difíceis de depurar e mais amplamente estudados [40, 43, 45, 57, 61] em linguagens tradicionais de programação multithread. Infelizmente, não houve trabalhos anteriores no estudo de bugs de concorrência no Go. Como resultado, até o momento, ainda não está claro se esses mecanismos de concorrência tornam realmente o Go mais fácil de programar e menos propenso a bugs de concorrência do que as linguagens tradicionais.
 
-Neste artigo, conduzimos o primeiro estudo empírico sobre bugs de concorrência no Go usando seis aplicativos Go de código aberto e de alta qualidade em produção: Docker [13] e Kubernetes [36], dois sistemas de contêineres para data centers, etcd [15], um sistema distribuído de armazenamento chave-valor, gRPC [19], uma biblioteca RPC, e CockroachDB [10] e BoltDB [6], dois sistemas de bancos de dados. No total, estudamos 171 bugs de concorrência nessas aplicações. Analisamos as causas raiz deles, realizamos experimentos para reproduzi-los e examinamos as correções. Por fim, testamos esses bugs com dois detectores de bugs de concorrência Go existentes (os únicos publicamente disponíveis).
+Neste artigo, conduzimos o primeiro estudo empírico sobre bugs de concorrência no Go usando seis aplicativos Go de código aberto e de alta qualidade em produção: Docker [13] e Kubernetes [36], dois sistemas de contêineres para data centers, etcd [15], um sistema distribuído de armazenamento chave-valor, gRPC [19], uma biblioteca RPC, e CockroachDB [10] e BoltDB [6], dois sistemas de bancos de dados. 
+
+No total, estudamos 171 bugs de concorrência nessas aplicações. Analisamos as causas raiz deles, realizamos experimentos para reproduzi-los e examinamos as correções. Por fim, testamos esses bugs com dois detectores de bugs de concorrência Go existentes (os únicos publicamente disponíveis).
 
 Nosso estudo se concentra em uma questão antiga e fundamental na programação concorrente: entre passagem de mensagens [27, 37] e memória compartilhada, qual desses mecanismos de comunicação entre threads é menos propenso a erros [2, 11, 48]. O Go é a linguagem perfeita para estudar essa questão, pois fornece estruturas para tanto memória compartilhada quanto passagem de mensagens. No entanto, ele incentiva o uso de canais em vez de memória compartilhada com a crença de que a passagem explícita de mensagens é menos propensa a erros [1, 2, 21].
 
@@ -26,12 +28,295 @@ Para demonstrar erros na passagem de mensagens, usamos um bug de bloqueio do Kub
 
 Esse bug demonstra a complexidade de usar novos recursos no Go e a dificuldade em escrever programas Go corretos como este. Os programadores precisam ter um entendimento claro da criação de goroutines com função anônima, um recurso que o Go propõe para facilitar a criação de goroutines, o uso de canais com ou sem buffer, a não determinismo na espera por múltiplas operações de canal usando select e a biblioteca especial de tempo. Embora cada um desses recursos tenha sido projetado para facilitar a programação multithread, na prática, é difícil escrever programas Go corretos com eles.
 
+![Figure 1. A blocking bug caused by channel.](https://github.com/alonsofritz/tcc-alonsofritz/assets/37676673/332540a4-2f1a-47ad-9469-0a0ad50a9637)
+
 No geral, nosso estudo revela novas práticas e novos problemas na programação concorrente em Go, e lança luz sobre uma resposta para o debate entre passagem de mensagens e acessos à memória compartilhada. Nossas descobertas melhoram a compreensão da concorrência em Go e podem fornecer orientações valiosas para o desenvolvimento futuro de ferramentas. Este artigo apresenta as seguintes contribuições-chave:
 
-Realizamos o primeiro estudo empírico de bugs de concorrência em Go com seis aplicativos Go do mundo real e de alta qualidade em produção.
-Fizemos nove observações-chave em alto nível sobre as causas, correções e detecção de bugs de concorrência em Go. Elas podem ser úteis como referência para programadores Go. Além disso, fornecemos oito insights sobre as implicações de nossos resultados para orientar futuras pesquisas no desenvolvimento, teste e detecção de bugs em Go.
-Propusemos novos métodos para categorizar bugs de concorrência ao longo de duas dimensões: causas dos bugs e comportamento. Essa metodologia de taxonomia nos ajudou a comparar melhor diferentes mecanismos de concorrência e correlações entre causas e correções de bugs. Acreditamos que outros estudos de bugs podem utilizar métodos de taxonomia semelhantes.
+- Realizamos o primeiro estudo empírico de bugs de concorrência em Go com seis aplicativos Go do mundo real e de alta qualidade em produção.
+- Fizemos nove observações-chave em alto nível sobre as causas, correções e detecção de bugs de concorrência em Go. Elas podem ser úteis como referência para programadores Go. Além disso, fornecemos oito insights sobre as implicações de nossos resultados para orientar futuras pesquisas no desenvolvimento, teste e detecção de bugs em Go.
+- Propusemos novos métodos para categorizar bugs de concorrência ao longo de duas dimensões: causas dos bugs e comportamento. Essa metodologia de taxonomia nos ajudou a comparar melhor diferentes mecanismos de concorrência e correlações entre causas e correções de bugs. Acreditamos que outros estudos de bugs podem utilizar métodos de taxonomia semelhantes.
+
 Todos os resultados de nosso estudo e os registros de commits estudados podem ser encontrados em https://github.com/system-pclub/go-concurrency-bugs.
+![image](https://github.com/alonsofritz/tcc-alonsofritz/assets/37676673/45b2a776-2dac-4ddb-9b66-9917924af9ca)
+
+## 2 Background and Applications
+Go é uma linguagem de programação de tipo estático projetada para programação concorrente desde o início [60]. Quase todas as principais revisões do Go incluem aprimoramentos em seus pacotes de concorrência [23]. Esta seção fornece uma breve contextualização sobre os mecanismos de concorrência do Go, incluindo seu modelo de thread, métodos de comunicação entre threads e mecanismos de sincronização de threads. Também apresentamos as seis aplicações em Go que escolhemos para este estudo.
+
+### 2.1 Goroutine
+O Go utiliza um conceito chamado "goroutine" como sua unidade de concorrência. Goroutines são threads leves de nível usuário que a biblioteca de execução do Go gerencia e mapeia para threads de nível kernel de maneira M para N. Uma goroutine pode ser criada simplesmente adicionando a palavra-chave "go" antes de uma chamada de função. Para facilitar a criação de goroutines, o Go também suporta a criação de uma nova goroutine usando uma função anônima, ou seja, uma definição de função que não possui identificador ou "nome". Todas as variáveis locais declaradas antes de uma função anônima são acessíveis a ela e potencialmente compartilhadas entre uma goroutine pai e uma goroutine filho criada usando a função anônima, o que pode causar corridas de dados (Seção 6).
+
+### 2.2 Sincronização com Memória Compartilhada
+O Go suporta acessos tradicionais à memória compartilhada entre goroutines. Ele oferece vários primitivos tradicionais de sincronização, como trava/liberação (Mutex), trava de leitura/escrita (RWMutex), variável de condição (Cond) e leitura/escrita atômica (atomic). A implementação do RWMutex no Go é diferente do pthread_rwlock_t em C. Solicitações de trava de escrita no Go têm um privilégio mais alto do que solicitações de trava de leitura.
+
+Como um novo primitivo introduzido pelo Go, o "Once" é projetado para garantir que uma função seja executada apenas uma vez. Ele possui um método "Do", com uma função "f" como argumento. Quando Once.Do(f) é invocado muitas vezes, apenas na primeira vez, a função "f" é executada. O "Once" é amplamente utilizado para garantir que uma variável compartilhada seja inicializada apenas uma vez por várias goroutines.
+
+Semelhante ao pthread_join em C, o Go utiliza "WaitGroup" para permitir que várias goroutines concluam seus acessos a variáveis compartilhadas antes de uma goroutine de espera. Goroutines são adicionadas a um WaitGroup chamando "Add". As goroutines em um WaitGroup usam "Done" para notificar sua conclusão, e uma goroutine chama "Wait" para aguardar a notificação de conclusão de todas as goroutines em um WaitGroup. O uso incorreto do WaitGroup pode causar tanto bugs de bloqueio (Seção 5) quanto bugs não bloqueadores (Seção 6).
+
+### 2.3 Sincronização com Passagem de Mensagens
+O Canal (chan) é um novo primitivo de concorrência introduzido pelo Go para enviar dados e estados entre goroutines e construir funcionalidades mais complexas [3, 50]. O Go suporta dois tipos de canais: com buffer e sem buffer. Enviar dados para (ou receber dados de) um canal sem buffer bloqueará uma goroutine até que outra goroutine receba dados do (ou envie dados para) o canal. Enviar para um canal com buffer só bloqueará quando o buffer estiver cheio. Existem várias regras subjacentes no uso de canais, e a violação delas pode criar bugs de concorrência. Por exemplo, um canal só pode ser usado após a inicialização, e enviar dados para (ou receber dados de) um canal nulo bloqueará uma goroutine para sempre. Enviar dados para um canal fechado ou fechar um canal já fechado pode desencadear um pânico em tempo de execução.
+
+A declaração select permite que uma goroutine aguarde em várias operações de canal. Um select bloqueará até que um de seus casos possa progredir ou quando ele pode executar um ramo padrão. Quando mais de um caso em um select é válido, o Go escolherá aleatoriamente um para executar. Essa aleatoriedade pode causar bugs de concorrência, como será discutido na Seção 6.
+
+O Go introduz várias novas semânticas para facilitar a interação entre várias goroutines. Por exemplo, para auxiliar o modelo de programação de atender a uma solicitação do usuário, criando um conjunto de goroutines que trabalham juntas, o Go introduz o contexto para transportar dados ou metadados específicos da solicitação entre goroutines. Como outro exemplo, o Pipe é projetado para transmitir dados entre um leitor (Reader) e um escritor (Writer). Ambos o contexto e o Pipe são novas formas de passagem de mensagens, e o uso inadequado deles pode criar novos tipos de bugs de concorrência (Seção 5).
+
+![Table 1. Information of selected applications. The number of stars, commits, contributors on GitHub, total source lines of code, and development history on GitHub. *: the gRPC version that is written in Go.](https://github.com/alonsofritz/tcc-alonsofritz/assets/37676673/2fc1c848-b0fb-44e0-be70-a97361da5bd6)
+
+### 2.4 Aplicações em Go
+Os últimos anos têm testemunhado um rápido aumento na popularidade e adoção da linguagem Go. Em 2017, o Go foi a nona linguagem mais popular no GitHub [18]. No momento desta redação, existem 187 mil repositórios no GitHub escritos em Go.
+
+Neste estudo, selecionamos seis softwares representativos do mundo real escritos em Go, incluindo dois sistemas de contêineres (Docker e Kubernetes), um sistema de armazenamento de chave-valor (etcd), dois bancos de dados (CockroachDB e BoltDB) e uma biblioteca de RPC (gRPC-go1) (Tabela 1). Essas aplicações são projetos de código aberto que ganharam ampla utilização em ambientes de datacenter. Por exemplo, Docker e Kubernetes são as duas aplicações mais populares escritas em Go no GitHub, com 48,9 mil e 36,5 mil estrelas, respectivamente (etcd está em décimo lugar, e as demais estão classificadas entre as 100 primeiras). Todas as aplicações selecionadas têm pelo menos três anos de histórico de desenvolvimento e são ativamente mantidas pelos desenvolvedores atualmente. Todas as nossas aplicações selecionadas têm tamanhos médios a grandes, com linhas de código variando de 9 mil a mais de 2 milhões. Entre as seis aplicações, Kubernetes e gRPC são projetos originalmente desenvolvidos pelo Google.
+
+## 3 Padrões de Uso de Concorrência em Go
+Antes de estudar os bugs de concorrência em Go, é importante primeiro entender como são os programas concorrentes do mundo real em Go. Esta seção apresenta nossos resultados de análise estática e dinâmica do uso de goroutines e do uso de primitivos de concorrência em Go em nossas seis aplicações selecionadas.
+
+![Table 2. Number of goroutine/thread creation sites](https://github.com/alonsofritz/tcc-alonsofritz/assets/37676673/72a220e8-fa79-4ba9-9002-5d07a655d4b7)
+
+![Table 3. Dynamic information when executing RPC benchmarks](https://github.com/alonsofritz/tcc-alonsofritz/assets/37676673/61972013-0ad6-4a90-97f5-90b799654ea5)
+
+### 3.1 Usos de Goroutines
+Para entender a concorrência em Go, devemos primeiro compreender como as goroutines são utilizadas em programas Go do mundo real. Uma das filosofias de design em Go é tornar as goroutines leves e fáceis de usar. Portanto, perguntamos "os programadores Go reais tendem a escrever seus códigos com muitas goroutines (estaticamente)?" e "as aplicações Go reais criam muitas goroutines durante a execução (dinamicamente)?"
+
+Para responder à primeira pergunta, coletamos a quantidade de locais de criação de goroutines (ou seja, as linhas de código-fonte que criam goroutines). A Tabela 2 resume os resultados. No geral, as seis aplicações utilizam uma grande quantidade de goroutines. A média de locais de criação por mil linhas de código-fonte varia de 0,18 a 0,83. Dividimos ainda mais os locais de criação entre aqueles que usam funções normais para criar goroutines e aqueles que usam funções anônimas. Todas as aplicações, exceto Kubernetes e BoltDB, usam mais funções anônimas.
+
+Para entender a diferença entre Go e linguagens tradicionais, também analisamos outra implementação do gRPC, o gRPC-C, que é implementado em C/C++. O gRPC-C contém 140 mil linhas de código e também é mantido pela equipe do gRPC da Google. Em comparação com o gRPC-Go, o gRPC-C surpreendentemente possui muito poucas criações de threads (apenas cinco locais de criação e 0,03 locais por mil linhas de código).
+
+Estudamos ainda mais a criação dinâmica de goroutines em tempo de execução. Executamos o gRPC-Go e o gRPC-C para processar três benchmarks de desempenho projetados para comparar o desempenho de várias versões do gRPC escritas em diferentes linguagens de programação [22]. Esses benchmarks configuram o gRPC com diferentes formatos de mensagem, números diferentes de conexões e solicitações RPC síncronas vs. assíncronas. Como o gRPC-C é mais rápido que o gRPC-Go [22], executamos o gRPC-C e o gRPC-Go para processar a mesma quantidade de solicitações RPC, em vez da mesma quantidade de tempo total.
+
+![Table 4. Concurrency Primitive Usage.](https://github.com/alonsofritz/tcc-alonsofritz/assets/37676673/f707e3ea-ce29-4682-b6db-b91a60cdbd18)
+
+A Tabela 3 mostra a razão entre o número de goroutines criadas no gRPC-Go sobre o número de threads criadas no gRPC-C ao executar os três workloads. Mais goroutines são criadas em diferentes workloads tanto no lado do cliente quanto no lado do servidor. A Tabela 3 também apresenta nossos resultados de estudo das durações de execução das goroutines e as compara com as durações de execução de threads do gRPC-C. Como o tempo de execução total do gRPC-Go e do gRPC-C é diferente e não faz sentido comparar durações absolutas de goroutines/threads, relatamos e comparamos a duração relativa de goroutines/threads em relação ao tempo total de execução do gRPC-Go e do gRPC-C. Especificamente, calculamos o tempo médio de execução de todas as goroutines/threads e normalizamos usando o tempo total de execução dos programas. Descobrimos que todas as threads no gRPC-C executam do início ao fim do programa inteiro (ou seja, 100%) e, portanto, incluímos apenas os resultados do gRPC-Go na Tabela 3. Para todos os workloads, o tempo de execução normalizado das goroutines é menor do que o das threads.
+Observação 1: Goroutines são mais curtas, mas são criadas com mais frequência do que em C (tanto estaticamente quanto em tempo de execução).
+
+### 3.2 Usos de Primitivas de Concorrência
+Após uma compreensão básica dos usos de goroutines em programas Go do mundo real, estudamos agora como as goroutines se comunicam e sincronizam nesses programas. Especificamente, calculamos os usos de diferentes tipos de primitivas de concorrência nas seis aplicações. A Tabela 4 apresenta o total (quantidade absoluta de usos de primitivas) e a proporção de cada tipo de primitiva sobre o total de primitivas. Operações de sincronização de memória compartilhada são mais frequentes do que a passagem de mensagens, e Mutex é a primitiva mais amplamente utilizada em todas as aplicações. Para primitivas de passagem de mensagem, chan é a mais frequentemente utilizada, variando de 18,48% a 42,99%.
+
+Comparamos ainda os usos de primitivas de concorrência no gRPC-C e no gRPC-Go. O gRPC-C utiliza apenas lock e é usado em 746 lugares (5,3 usos de primitivas por mil linhas de código). O gRPC-Go utiliza oito tipos diferentes de primitivas em 786 lugares (14,8 usos de primitivas por mil linhas de código). Claramente, o gRPC-Go utiliza uma quantidade maior e uma variedade maior de primitivas de concorrência do que o gRPC-C.
+
+Em seguida, estudamos como os usos de primitivas de concorrência mudam ao longo do tempo. As Figuras 2 e 3 apresentam os usos de primitivas de memória compartilhada e passagem de mensagem nas seis aplicações de fevereiro de 2015 a maio de 2018. No geral, os usos tendem a ser estáveis ao longo do tempo, o que também sugere que nossos resultados de estudo serão valiosos para futuros programadores Go.
+
+![Figure 2. Figure 3. Figure 4.](https://github.com/alonsofritz/tcc-alonsofritz/assets/37676673/6a460f65-407e-43f2-a625-fd40225e6572)
+
+Observação 2: Embora a comunicação e sincronização tradicional entre threads por meio de memória compartilhada continue sendo amplamente utilizada, os programadores Go também fazem uso significativo de primitivas de passagem de mensagens.
+
+Implicação 1: Com o uso mais intenso de goroutines e novos tipos de primitivas de concorrência, programas Go podem potencialmente introduzir mais bugs de concorrência.
+
+## 4 Metodologia de Estudo de Bugs
+Esta seção discute como coletamos, categorizamos e reproduzimos bugs de concorrência neste estudo.
+Coleta de bugs de concorrência. Para coletar bugs de concorrência, filtramos inicialmente os históricos de commits do GitHub das seis aplicações, buscando em seus logs de commits por palavras-chave relacionadas à concorrência, incluindo "race", "deadlock", "synchronization", "concurrency", "lock", "mutex", "atomic", "compete", "context", "once" e "goroutine leak". Algumas dessas palavras-chave são utilizadas em trabalhos anteriores para coletar bugs de concorrência em outras linguagens [40, 42, 45]. Algumas delas estão relacionadas a novas primitivas ou bibliotecas de concorrência introduzidas pelo Go, como "once" e "context". Uma delas, "goroutine leak", está relacionada a um problema específico do Go. No total, encontramos 3211 commits distintos que correspondem aos nossos critérios de busca.
+
+![Table 5. Taxonomy](https://github.com/alonsofritz/tcc-alonsofritz/assets/37676673/56460b1b-b4a6-4d79-abd9-40e14e9a471e)
+
+Em seguida, amostramos aleatoriamente os commits filtrados, identificamos commits que corrigem bugs de concorrência e os estudamos manualmente. Muitos logs de commits relacionados a bugs também mencionam os relatórios de bugs correspondentes, e também estudamos esses relatórios para nossa análise de bugs. Estudamos um total de 171 bugs de concorrência.
+Taxonomia de bugs. Propomos um novo método para categorizar bugs de concorrência em Go de acordo com duas dimensões ortogonais. A primeira dimensão é baseada no comportamento dos bugs. Se uma ou mais goroutines ficam involuntariamente presas em sua execução e não conseguem avançar, chamamos tais problemas de concorrência de bugs bloqueadores. Se, em vez disso, todas as goroutines podem concluir suas tarefas, mas seus comportamentos não são desejados, chamamos esses de bugs não bloqueadores. A maioria dos estudos anteriores sobre bugs de concorrência [24, 43, 45] categoriza bugs em bugs de deadlock e bugs não de deadlock, onde deadlocks incluem situações em que há uma espera circular entre várias threads. Nossa definição de bloqueador é mais ampla do que deadlocks e inclui situações em que não há espera circular, mas uma (ou mais) goroutines esperam por recursos que nenhuma outra goroutine fornece. Como mostraremos na Seção 5, muitos bugs de concorrência em Go são desse tipo. Acreditamos que, com novos hábitos de programação e semânticas em novas linguagens como o Go, devemos prestar mais atenção a esses bugs bloqueadores não relacionados a deadlocks e estender o mecanismo tradicional de categorização de bugs de concorrência.
+
+A segunda dimensão é ao longo da causa dos bugs de concorrência. Bugs de concorrência ocorrem quando várias threads tentam se comunicar e erros ocorrem durante essa comunicação. Nossa ideia é categorizar as causas dos bugs de concorrência pelo modo como diferentes goroutines se comunicam: acessando memória compartilhada ou passando mensagens. Essa categorização pode ajudar programadores e pesquisadores a escolherem melhores maneiras de realizar a comunicação entre threads e a detectar e evitar erros potenciais ao realizar essa comunicação.
+
+De acordo com nosso método de categorização, existem um total de 85 bugs bloqueadores e 86 bugs não bloqueadores, e há um total de 105 bugs causados por proteção incorreta de memória compartilhada e 66 bugs causados por passagem incorreta de mensagens. A Tabela 5 mostra a detalhada distribuição de categorias de bugs em cada aplicação.
+
+Analisamos ainda a vida útil dos bugs estudados, ou seja, o tempo desde a adição do código com bug (commitado) no software até a sua correção no software (um patch de correção é commitado). Como mostrado na Figura 4, a maioria dos bugs que estudamos (tanto de memória compartilhada quanto de passagem de mensagem) tem uma longa vida útil. Também observamos que o momento em que esses bugs foram relatados está próximo do momento em que foram corrigidos. Esses resultados mostram que a maioria dos bugs que estudamos não são fáceis de serem acionados ou detectados, mas uma vez que são, são corrigidos muito rapidamente. Portanto, acreditamos que esses bugs são não triviais e merecem uma análise mais detalhada.
+
+![Table 6. Blocking Bug Causes](https://github.com/alonsofritz/tcc-alonsofritz/assets/37676673/a8d55701-80b2-49fd-a65b-2bed254eb933)
+
+**Reprodução de Bugs de Concorrência** para avaliar as técnicas integradas de detecção de deadlock e race condition, reproduzimos 21 bugs bloqueadores e 20 bugs não bloqueadores. Para reproduzir um bug, retrocedemos a aplicação para a versão com o bug, construímos essa versão e executamos o programa gerado usando a entrada que desencadeia o bug, conforme descrito no relatório de bug. Utilizamos o sintoma mencionado no relatório de bug para decidir se conseguimos reproduzir com sucesso o bug. Devido à sua natureza não determinística, bugs de concorrência são difíceis de reproduzir. Às vezes, foi necessário executar o programa com bug muitas vezes ou adicionar manualmente pausas a um programa com bug. Se um bug não foi reproduzido, pode ser porque não encontramos algumas bibliotecas dependentes ou porque não conseguimos observar o sintoma descrito.
+
+**Ameaças à Validade** a validade de nosso estudo pode ser ameaçada por diversos aspectos. Selecionamos seis aplicativos representativos em Go. Existem muitos outros aplicativos implementados em Go que podem não ter os mesmos problemas de concorrência. Estudamos apenas bugs de concorrência que foram corrigidos. Pode haver outros bugs de concorrência raramente reproduzidos e nunca corrigidos pelos desenvolvedores. Para alguns bugs de concorrência corrigidos, há pouca informação disponível, o que os torna difíceis de entender. Não incluímos esses bugs em nosso estudo. Apesar dessas limitações, fizemos o melhor possível para coletar bugs de concorrência do mundo real e conduzir um estudo abrangente e imparcial. Acreditamos que nossas descobertas são gerais o suficiente para motivar e orientar futuras pesquisas sobre a resolução de bugs de concorrência em Go.
+
+## 5 Bugs Bloqueadores
+Esta seção apresenta os resultados de nosso estudo sobre bugs bloqueadores, incluindo suas causas raiz, correções e a eficácia do detector de deadlock embutido no tempo de execução do Go para detectar situações bloqueadoras.
+
+### 5.1 Causas Raiz dos Bugs Bloqueadores
+Os bugs bloqueadores ocorrem quando uma ou mais goroutines realizam operações que aguardam recursos e esses recursos nunca estão disponíveis. Para detectar e evitar bugs bloqueadores, é importante entender suas causas raiz. Estudamos as causas raiz dos bugs bloqueadores examinando qual operação bloqueia uma goroutine e por que a operação não é desbloqueada por outras goroutines. Usando nossa segunda dimensão de categorização de bugs, separamos os bugs bloqueadores em aqueles causados por operações emperradas destinadas a proteger acessos à memória compartilhada e aqueles causados por operações de passagem de mensagem. A Tabela 6 resume as causas raiz de todos os bugs bloqueadores.
+
+No geral, descobrimos que cerca de 42% dos bugs bloqueadores são causados por erros na proteção da memória compartilhada, enquanto 58% são causados por erros na passagem de mensagem. Considerando que as primitivas de memória compartilhada são usadas com mais frequência do que as de passagem de mensagem (Seção 3.2), operações de passagem de mensagem têm ainda mais probabilidade de causar bugs bloqueadores.
+
+Observação 3: Contrariando a crença comum de que a passagem de mensagem é menos propensa a erros, mais bugs bloqueadores em nossas aplicações Go estudadas são causados por passagem de mensagem incorreta do que por proteção errada de memória compartilhada.
+
+### 5.1.1 (Má)Proteção de Memória Compartilhada
+Os acessos à memória compartilhada são notoriamente difíceis de programar corretamente e sempre foram um dos principais focos de pesquisa sobre deadlock [35, 51, 54]. Eles continuam causando bugs bloqueadores em Go, tanto com padrões tradicionais quanto por razões específicas do Go.
+
+Mutex: 28 bugs bloqueadores são causados por uso indevido de bloqueios (Mutex), incluindo dupla aplicação de bloqueio, aplicação de bloqueios em ordens conflitantes e esquecimento de desbloqueio. Todos os bugs desta categoria são bugs tradicionais, e acreditamos que algoritmos tradicionais de detecção de deadlock devem ser capazes de detectar esses bugs com análise estática do programa.
+
+RWMutex: Como explicado na Seção 2.2, as solicitações de bloqueio de escrita do Go têm um privilégio maior do que as solicitações de bloqueio de leitura. Essa implementação única de bloqueio pode levar a um bug bloqueador quando uma goroutine (th-A) adquire um RWMutex duas vezes com bloqueio de leitura, e essas duas operações de bloqueio de leitura são intercaladas por uma operação de bloqueio de escrita de outra goroutine (th-B). Quando a primeira operação de bloqueio de leitura de th-A é bem-sucedida, ela bloqueará a operação de bloqueio de escrita de th-B, já que o bloqueio de escrita é exclusivo. No entanto, a operação de bloqueio de escrita de th-B também bloqueará a segunda operação de bloqueio de leitura de th-A, pois a solicitação de bloqueio de escrita tem um privilégio maior na implementação do Go. Nem th-A nem th-B conseguirão avançar.
+
+Cinco bugs bloqueadores são causados por essa razão. Observe que o mesmo padrão de bloqueio de intercalação não causará bugs bloqueadores para pthread_rwlock_t em C, pois pthread_rwlock_t prioriza solicitações de bloqueio de leitura na configuração padrão. O tipo de bug de bloqueio RWMutex implica que, mesmo quando o Go usa as mesmas semânticas de concorrência que linguagens tradicionais, ainda podem ocorrer novos tipos de bugs devido à nova implementação das semânticas do Go.
+
+![Figure 5. A blocking bug caused by WaitGroup.
+](https://github.com/alonsofritz/tcc-alonsofritz/assets/37676673/bd69c78c-7fe8-4b18-b3a0-95e1250cd291)
+
+Wait: Três bugs bloqueadores ocorrem devido a operações de espera que não conseguem prosseguir. Ao contrário dos bugs relacionados a Mutex e RWMutex, eles não envolvem espera circular. Dois desses bugs ocorrem quando Cond é usado para proteger acessos à memória compartilhada e uma goroutine chama Cond.Wait(), mas nenhuma outra goroutine chama Cond.Signal() (ou Cond.Broadcast()) depois disso. O terceiro bug, Docker#25384, acontece com o uso de uma variável compartilhada do tipo WaitGroup, conforme mostrado na Figura 5. O Wait() na linha 7 só pode ser desbloqueado quando Done() na linha 5 é invocado len(pm.plugins) vezes, já que len(pm.plugins) é usado como parâmetro para chamar Add() na linha 2. No entanto, o Wait() é chamado dentro do loop, bloqueando a criação de goroutines na linha 4 em iterações posteriores e bloqueando a invocação de Done() dentro de cada goroutine criada. A correção desse bug é mover a invocação de Wait() para fora do loop. Embora a variável condicional e a espera de grupo de threads sejam ambas técnicas tradicionais de concorrência, suspeitamos que o novo modelo de programação do Go seja uma das razões pelas quais os programadores cometeram esses bugs de concorrência. Por exemplo, ao contrário de pthread_join, que é uma chamada de função que espera explicitamente a conclusão de threads (nomeadas), WaitGroup é uma variável que pode ser compartilhada entre goroutines e sua função Wait espera implicitamente pela função Done.
+
+Observação 4: A maioria dos bugs bloqueadores causados pela sincronização de memória compartilhada tem as mesmas causas e correções que as linguagens tradicionais. No entanto, alguns deles são diferentes das linguagens tradicionais, seja por causa da nova implementação de primitivas existentes no Go ou por suas novas semânticas de programação.
+
+### 5.1.2 Uso Indevido de Passagem de Mensagem
+Agora discutimos bugs bloqueadores causados por erros na passagem de mensagem, que, ao contrário da crença comum, são o principal tipo de bugs bloqueadores em nossas aplicações estudadas.
+
+Canal (Channel): Erros no uso de canais para passar mensagens entre goroutines causam 29 bugs bloqueadores. Muitos dos bugs bloqueadores relacionados a canais são causados pela falta de envio para (ou recebimento de) um canal ou pelo fechamento de um canal, o que resultará no bloqueio de uma goroutine que espera para receber (ou enviar) para o canal. Um exemplo disso é mostrado na Figura 1. 
+
+![Figure 6. A blocking bug caused by context](https://github.com/alonsofritz/tcc-alonsofritz/assets/37676673/fa7c219a-378d-4de9-b867-88340eef8a0f)
+
+Quando combinados com o uso de bibliotecas especiais do Go, a criação de canais e o bloqueio de goroutines podem estar embutidos em chamadas de biblioteca. Conforme mostrado na Figura 6, um novo objeto de contexto, hcancel, é criado na linha 1. Uma nova goroutine é criada ao mesmo tempo, e mensagens podem ser enviadas para a nova goroutine através do campo channel de hcancel. Se o timeout for maior que 0 na linha 4, outro objeto de contexto é criado na linha 5, e hcancel aponta para o novo objeto. Depois disso, não há como enviar mensagens ou fechar a goroutine associada ao objeto antigo. A correção é evitar a criação do objeto de contexto extra quando o timeout for maior que 0.
+
+![Figure 7. A blocking bug caused by wrong usage of channel with lock.
+](https://github.com/alonsofritz/tcc-alonsofritz/assets/37676673/27a07d05-f4e4-40b1-a95f-ee294da8b872)
+
+Canal e Outras Primitivas de Bloqueio: Em 16 bugs bloqueadores, uma goroutine é bloqueada em uma operação de canal, enquanto outra goroutine é bloqueada em uma operação de trava (lock) ou espera (wait). Por exemplo, conforme mostrado na Figura 7, a goroutine1 está bloqueada ao enviar uma solicitação para o canal ch, enquanto a goroutine2 está bloqueada em m.Lock(). A correção é adicionar um select com um ramo padrão (default branch) para a goroutine1, tornando ch não mais bloqueante.
+
+Bibliotecas de Mensagens: O Go fornece várias bibliotecas para passagem de dados ou mensagens, como a Pipe. Chamadas especiais a essas bibliotecas também podem causar bugs bloqueadores quando não utilizadas corretamente. Por exemplo, semelhante ao canal, se um Pipe não for fechado, uma goroutine pode ser bloqueada ao tentar enviar dados para ou retirar dados do Pipe não fechado. Existem 4 bugs bloqueadores coletados causados por chamadas especiais de bibliotecas de passagem de mensagens do Go.
+
+Observação 5: Todos os bugs bloqueadores causados por passagem de mensagem estão relacionados às novas semânticas de passagem de mensagem do Go, como o canal. Eles podem ser difíceis de detectar, especialmente quando as operações de passagem de mensagem são usadas em conjunto com outros mecanismos de sincronização.
+
+Implicação 2: Contrariamente à crença comum, a passagem de mensagem pode causar mais bugs bloqueadores do que a memória compartilhada. Chamamos a atenção para o perigo potencial na programação com passagem de mensagem e levantamos a questão de pesquisa sobre a detecção de bugs nesta área.
+
+![Table 7. Fix strategies for blocking bugs.](https://github.com/alonsofritz/tcc-alonsofritz/assets/37676673/a34cc565-fe40-498f-babb-12eea88d9c04)
+
+## 5.2 Correções dos Bugs Bloqueadores
+
+Após compreender as causas dos bugs bloqueadores no Go, agora analisamos como os programadores do Go corrigiram esses bugs no mundo real.
+
+Eliminar a causa de bloqueio de uma goroutine pendente a desbloqueará, sendo esta a abordagem geral para corrigir bugs bloqueadores. Para atingir esse objetivo, os desenvolvedores do Go frequentemente ajustam operações de sincronização, incluindo adição de operações ausentes, movimento ou alteração de operações mal colocadas/mal utilizadas e remoção de operações extras. A Tabela 7 resume essas correções.
+
+A maioria dos bugs bloqueadores causados por proteção equivocada de acessos à memória compartilhada foi corrigida por métodos semelhantes às correções tradicionais de deadlock. Por exemplo, entre os 33 bugs relacionados a Mutex ou RWMutex, 8 foram corrigidos adicionando um unlock ausente; 9 foram corrigidos movendo operações de lock ou unlock para locais apropriados; e 11 foram corrigidos removendo uma operação de lock adicional.
+
+Onze bugs bloqueadores causados por passagem de mensagem incorreta foram corrigidos adicionando uma operação de mensagem ausente ou de fechamento a um canal (e, em dois casos, a um pipe) em uma goroutine diferente da bloqueada. Oito bugs bloqueadores foram corrigidos adicionando um select com uma opção padrão (por exemplo, Figura 7) ou um case com operação em um canal diferente. Outra correção comum para bugs bloqueadores relacionados a canais é substituir um canal não bufferizado por um canal bufferizado (por exemplo, Figura 1). Outros bugs bloqueadores relacionados a canais podem ser corrigidos por estratégias como mover uma operação de canal para fora de uma seção crítica e substituir canal por variáveis compartilhadas.
+
+Para entender a relação entre a causa de um bug bloqueador e sua correção, aplicamos uma métrica estatística chamada lift, seguindo estudos empíricos anteriores sobre bugs do mundo real [29, 41]. Lift é calculado como lift(A, B) = P(AB) / P(A)P(B), onde A denota uma categoria de causa raiz, B denota uma categoria de estratégia de correção, P(AB) denota a probabilidade de que um bloqueio seja causado por A e corrigido por B. Quando o valor de lift é igual a 1, a causa raiz A é independente da estratégia de correção B. Quando o valor de lift é maior que 1, A e B estão positivamente correlacionados, o que significa que se um bloqueio é causado por A, é mais provável que seja corrigido por B. Quando lift é menor que 1, A e B estão negativamente correlacionados.
+
+Entre todas as categorias de bugs que têm mais de 10 bugs bloqueadores (omitimos categorias que têm menos de 10 bugs devido à sua insignificância estatística), Mutex é a categoria que tem a correlação mais forte com um tipo de correção - ela se correlaciona com Movimentos (Moves) com um valor de lift de 1,52. A correlação entre Chan e Adds é a segunda mais alta, com valor de lift 1,42. Todas as outras categorias que têm mais de 10 bugs bloqueadores têm valores de lift abaixo de 1,16, mostrando ausência de correlação forte.
+
+![Table 8. Benchmarks and evaluation results of the deadlock detector.](https://github.com/alonsofritz/tcc-alonsofritz/assets/37676673/2cc571e1-402d-4e69-b489-419ed3782c94)
+
+Também analisamos as correções dos bugs bloqueadores de acordo com o tipo de primitivas de concorrência usadas nos patches. Como esperado, a maioria dos bugs cujas causas estão relacionadas a um certo tipo de primitiva também foi corrigida ajustando essa primitiva. Por exemplo, todos os bugs relacionados a Mutex foram corrigidos ajustando primitivas de Mutex.
+
+A alta correlação entre causas de bugs e as primitivas e estratégias usadas para corrigi-los, além dos tipos limitados de primitivas de sincronização no Go, sugere receitas frutíferas para investigar a correção automática de bugs bloqueadores no Go.
+
+Descobrimos ainda que o tamanho dos patches de nossos bugs bloqueadores estudados é pequeno, com uma média de 6,8 linhas de código. Cerca de 90% dos bugs bloqueadores estudados são corrigidos ajustando primitivas de sincronização.
+
+Observação 6: A maioria dos bugs bloqueadores em nosso estudo (tanto os tradicionais de memória compartilhada quanto os de passagem de mensagem) pode ser corrigida com soluções simples, e muitas correções estão correlacionadas com as causas dos bugs.
+
+Implicação 3: A alta correlação entre as causas e as soluções nos bugs bloqueadores do Go, juntamente com a simplicidade em suas correções, sugere que é promissor desenvolver ferramentas totalmente automatizadas ou semi-automatizadas para corrigir bugs bloqueadores no Go.
+
+## 5.3 Detecção de Bugs Bloqueadores:
+
+Go oferece um detector de deadlock integrado implementado no agendador de goroutines. O detector está sempre ativado durante o tempo de execução do Go e relata deadlock quando nenhuma goroutine em um processo em execução pode progredir. Testamos todos os nossos bugs bloqueadores reproduzidos com o detector de deadlock integrado do Go para avaliar quais bugs ele pode encontrar. Para cada bug testado, o bloqueio pode ser acionado de maneira determinística em cada execução. Portanto, para cada bug, o executamos apenas uma vez neste experimento. A Tabela 8 resume nossos resultados de teste.
+
+O detector de deadlock integrado só consegue detectar dois bugs bloqueadores, BoltDB#392 e BoltDB#240, e falha em todos os outros casos (embora o detector não relate falsos positivos [38, 39]). Existem duas razões pelas quais o detector integrado falhou em detectar outros bugs bloqueadores. Primeiro, ele não considera o sistema monitorado como bloqueado quando ainda existem algumas goroutines em execução. Segundo, ele apenas examina se as goroutines estão bloqueadas em primitivas de concorrência do Go, mas não considera goroutines que aguardam recursos de outros sistemas. Essas duas limitações são amplamente devidas ao objetivo de design do detector integrado - minimizar a sobrecarga de tempo de execução. Quando implementado no agendador de tempo de execução, é muito difícil para um detector identificar efetivamente bugs bloqueadores complexos sem sacrificar o desempenho.
+
+![Table 9. Root causes of non-blocking bugs](https://github.com/alonsofritz/tcc-alonsofritz/assets/37676673/13feeee0-e2c1-4225-b9c6-6acc65903042)
+
+Implicação 4: O detector de deadlock de tempo de execução simples não é eficaz na detecção de bugs bloqueadores no Go. Pesquisas futuras devem se concentrar no desenvolvimento de técnicas inovadoras de detecção de bugs bloqueadores, por exemplo, com uma combinação de detecção de padrões bloqueadores estáticos e dinâmicos.
+
+## 6 Bugs Não-Bloqueadores
+Esta seção apresenta nosso estudo sobre bugs não-bloqueadores. Semelhante ao que fizemos na Seção 5, estudamos as causas raiz e correções de bugs não-bloqueadores e avaliamos um detector de corrida integrado ao Go.
+
+### 6.1 Causas Raiz de Bugs Não-bloqueadores
+Assim como nos bugs bloqueadores, também categorizamos nossos bugs não-bloqueadores coletados em aqueles causados por falha em proteger a memória compartilhada e aqueles que possuem erros com passagem de mensagem (Tabela 9).
+
+### 6.1.1 Falha em Proteger a Memória Compartilhada
+Trabalhos anteriores [8, 14, 16, 17, 46, 47, 52, 62–64] descobriram que não proteger acessos à memória compartilhada ou erros nessa proteção são as principais causas de corrida de dados e outros bugs não-deadlock. Da mesma forma, descobrimos que cerca de 80% dos nossos bugs não-bloqueadores coletados são devido a acessos à memória compartilhada não protegidos ou protegidos de maneira incorreta. No entanto, nem todos compartilham as mesmas causas que bugs não-bloqueadores em linguagens tradicionais.
+
+Bugs tradicionais Mais da metade dos nossos bugs não-bloqueadores coletados são causados por problemas tradicionais que também ocorrem em linguagens clássicas como C e Java, como violação de atomicidade [8, 16, 46], violação de ordem [17, 47, 62, 64] e corrida de dados [14, 52, 63]. Esse resultado mostra que os mesmos erros são cometidos por desenvolvedores em diferentes linguagens. Também indica que é promissor aplicar algoritmos de detecção de bugs de concorrência existentes para procurar novos bugs no Go.
+
+Curiosamente, encontramos sete bugs não-bloqueadores cujas causas raiz são tradicionais, mas são amplamente causados pela falta de compreensão clara de novos recursos do Go. Por exemplo, Docker#22985 e CockroachDB#6111 são causados por corrida de dados em uma variável compartilhada cuja referência é passada entre goroutines por meio de um canal.
+Função anônima Os designers do Go fazem a declaração de goroutine semelhante a uma chamada de função regular (que nem mesmo precisa ter um "nome de função") para facilitar a criação de goroutines. Todas as variáveis locais declaradas antes de uma função anônima do Go são acessíveis pela função anônima. Infelizmente, essa facilidade de programação pode aumentar a chance de bugs de corrida de dados quando goroutines são criadas com funções anônimas, pois os desenvolvedores podem não prestar atenção suficiente para proteger essas variáveis locais compartilhadas.
+
+![Figure 8. A data race caused by anonymous function.](https://github.com/alonsofritz/tcc-alonsofritz/assets/37676673/a4296356-b721-49cf-8cd6-cc3c743a30f2)
+
+![Figure 9. A non-blocking bug caused by misusing WaitGroup.](https://github.com/alonsofritz/tcc-alonsofritz/assets/37676673/2fbb2ddb-5aed-4c64-a179-85789eb5ad1f)
+
+Encontramos 11 bugs desse tipo, dos quais 9 são causados por uma corrida de dados entre uma goroutine pai e uma goroutine filho criada usando uma função anônima. Os outros dois são causados por uma corrida de dados entre duas goroutines filhas. Um exemplo do Docker é mostrado na Figura 8. A variável local i é compartilhada entre a goroutine pai e as goroutines que ela cria na linha 2. O desenvolvedor pretende que cada goroutine filho use um valor distinto de i para inicializar a string apiVersion na linha 4. No entanto, os valores de apiVersion são não determinísticos no programa com defeito. Por exemplo, se as goroutines filhas começarem após o término do loop da goroutine pai, o valor de apiVersion será sempre igual a 'v1.21'. O programa com defeito só produz o resultado desejado quando cada goroutine filho inicializa a string apiVersion imediatamente após sua criação e antes que i seja atribuído a um novo valor. Os desenvolvedores do Docker corrigiram esse bug fazendo uma cópia da variável compartilhada i a cada iteração e passando o valor copiado para as novas goroutines.
+
+Usando WaitGroup de forma inadequada Existe uma regra subjacente ao usar WaitGroup, que é que o Add deve ser invocado antes do Wait. A violação dessa regra causa 6 bugs não bloqueadores. A Figura 9 mostra um desses bugs no etcd, onde não há garantia de que o Add na linha 8 da func1 ocorra antes do Wait na linha 5 da func2. A correção é mover o Add para uma seção crítica, garantindo que o Add seja executado antes ou não seja executado.
+
+Bibliotecas especiais O Go fornece muitas bibliotecas novas, algumas das quais usam objetos compartilhados implicitamente por várias goroutines. Se não forem usadas corretamente, pode ocorrer corrida de dados. Por exemplo, o tipo de objeto de contexto é projetado para ser acessado por várias goroutines que estão anexadas ao contexto. etcd#7816 é um bug de corrida de dados causado por múltiplas goroutines acessando o campo de string de um objeto de contexto. Outro exemplo é o pacote de teste, que é projetado para dar suporte a testes automatizados. Uma função de teste (identificada começando o nome da função com "Test") aceita apenas um parâmetro do tipo testing.T, usado para passar estados de teste como erro e log. Três bugs de corrida de dados são causados por acessos a uma variável testing.T a partir da goroutine que executa a função de teste e outras goroutines criadas dentro da função de teste.
+
+Observação 7: Cerca de dois terços dos bugs não bloqueadores de memória compartilhada são causados por causas tradicionais. As novas semânticas de multithreading e novas bibliotecas do Go contribuem para o restante, cerca de um terço.
+
+Implicação 5: Novos modelos de programação e novas bibliotecas introduzidos pelo Go para facilitar a programação multithread podem ser eles próprios motivos de mais bugs de concorrência.
+
+### 6.1.2 Erros durante a passagem de mensagens 
+Erros durante a passagem de mensagens também podem causar bugs não bloqueadores e compreendem cerca de 20% dos nossos bugs não bloqueadores coletados.
+
+**Uso inadequado de channel** Como discutido na Seção 2, existem várias regras ao usar channels, e violá-las pode levar a bugs não bloqueadores, além dos bloqueadores. Há 16 bugs não bloqueadores causados pelo uso inadequado de channels.
+
+![Figure 10. A bug caused by closing a channel twice.](https://github.com/alonsofritz/tcc-alonsofritz/assets/37676673/461e91f9-f81c-4e2d-af93-21097622cb25)
+
+Como exemplo, o Docker#24007 na Figura 10 é causado pela violação da regra de que um canal só pode ser fechado uma vez. Quando várias goroutines executam o trecho de código, mais de uma delas pode executar a cláusula padrão e tentar fechar o canal na linha 5, causando um pânico em tempo de execução no Go. A correção é usar o pacote Once para garantir que o canal seja fechado apenas uma vez.
+
+Outro tipo de bug de concorrência ocorre ao usar channel e select juntos. No Go, quando várias mensagens são recebidas por um select, não há garantia de qual delas será processada primeiro. Essa implementação não determinística do select causou 3 bugs. A Figura 11 mostra um exemplo disso. O loop na linha 2 executa uma função pesada f() na linha 8 sempre que um ticker dispara na linha 12 (caso 2) e interrompe sua execução ao receber uma mensagem do canal stopCh na linha 10 (caso 1). Se receber uma mensagem de stopCh e o ticker disparar ao mesmo tempo, não há garantia de qual será escolhido pelo select. Se o select escolher o caso 2, f() será executada desnecessariamente mais uma vez. A correção é adicionar outro select no início do loop para lidar com o sinal não processado de stopCh.
+
+![Figure 11. A non-blocking bug caused by select and channel.](https://github.com/alonsofritz/tcc-alonsofritz/assets/37676673/23f7af2d-40e4-4eb0-924b-4872491f4f0b)
+
+![Figure 12. A non-blocking bug caused by Timer.](https://github.com/alonsofritz/tcc-alonsofritz/assets/37676673/aa4fabf7-cb70-43c3-890e-43338b95744b)
+
+**Bibliotecas especiais** Algumas das bibliotecas especiais do Go usam channels de uma maneira sutil, o que também pode causar bugs não bloqueadores. A Figura 12 mostra um bug relacionado ao pacote time, projetado para medir o tempo. Aqui, um temporizador é criado com uma duração de timeout 0 na linha 1. No momento da criação de um objeto Timer, o tempo de execução do Go (implicitamente) inicia uma goroutine interna à biblioteca que inicia a contagem regressiva do temporizador. O temporizador é configurado com um valor de timeout dur na linha 4. Os desenvolvedores pretendiam retornar da função atual apenas quando dur fosse maior que 0 ou quando ctx.Done(). No entanto, quando dur não é maior que 0, a goroutine interna da biblioteca sinalizará o canal timer.C assim que o temporizador for criado, causando o retorno prematuro da função (linha 8). A correção é evitar a criação do Timer na linha 1.
+
+Observação 8: Há muitos menos bugs não bloqueadores causados por passagem de mensagens do que por acessos a memória compartilhada. As regras de channel e a complexidade de usar channel com outros
+
+![Table 10. Fix strategies for non-blocking bugs.](https://github.com/alonsofritz/tcc-alonsofritz/assets/37676673/02273290-0dff-4cce-ae95-13ec93011267)
+
+![Table 11. Synchronization primitives in patches of non-blocking bugs](https://github.com/alonsofritz/tcc-alonsofritz/assets/37676673/35e5a609-45a3-47c7-8e52-50f1026eb2af)
+
+Implicação 6: Quando usado corretamente, a passagem de mensagens pode ser menos propensa a bugs não bloqueadores do que os acessos à memória compartilhada. No entanto, o design intrincado da passagem de mensagens em uma linguagem pode tornar esses bugs especialmente difíceis de encontrar quando combinados com outras características específicas da linguagem.
+
+### 6.2 Correções de Bugs Não Bloqueadores
+
+Assim como em nossa análise de correções de bugs bloqueadores, primeiro analisamos as correções de bugs não bloqueadores por suas estratégias. A Tabela 10 categoriza as estratégias de correção de nossos bugs Go não bloqueadores estudados, de maneira semelhante a uma categorização anterior de correções de bugs não bloqueadores em C/C++ [43].
+
+Aproximadamente 69% dos bugs não bloqueadores foram corrigidos restringindo o tempo, seja adicionando primitivas de sincronização como Mutex, ou movendo primitivas existentes, como no caso de mover o Add na Figura 9. Dez bugs não bloqueadores foram corrigidos eliminando instruções que acessam variáveis compartilhadas ou ignorando as instruções (por exemplo, Figura 10). Quatorze bugs foram corrigidos fazendo uma cópia privada da variável compartilhada (por exemplo, Figura 8), e esses bugs são todos relacionados à memória compartilhada.
+
+![Table 12. Benchmarks and evaluation results of the data race detector.](https://github.com/alonsofritz/tcc-alonsofritz/assets/37676673/656443f1-5e1d-4009-8121-74701b439619)
+
+Para ter uma melhor compreensão das correções de bugs não bloqueadores e sua relação com as causas dos bugs, verificamos ainda quais primitivas são utilizadas nas correções. A Tabela 11 lista as correções de acordo com o tipo de primitivas usadas nas correções.
+
+Semelhante aos resultados de um estudo anterior sobre correções de bugs de concorrência em C/C++ [43], o Mutex é a primitiva mais amplamente usada para impor a exclusão mútua e corrigir bugs não bloqueadores. Além de bugs tradicionais, o Mutex também foi usado para corrigir corridas causadas por função anônima e por WaitGroup, além de substituir o uso incorreto de canais.
+
+Como primitiva nova, o canal é o segundo mais amplamente utilizado. O canal foi utilizado para passar valores entre duas goroutines e substituir variáveis compartilhadas para corrigir corridas. Também foi usado para impor a ordem entre duas operações em goroutines diferentes. Existem também bugs em que o canal não é usado corretamente e é corrigido no patch (por exemplo, Figura 10). Curiosamente, os canais foram usados não apenas para corrigir bugs relacionados a passagem de mensagens, mas também bugs causados por sincronização tradicional de memória compartilhada. Suspeitamos que isso ocorra porque alguns programadores Go veem a passagem de mensagens como uma maneira mais confiável ou mais fácil de realizar comunicação entre threads.
+
+Finalmente, 24 bugs foram corrigidos por outras primitivas de concorrência e 19 bugs foram corrigidos sem o uso de nenhuma primitiva de concorrência (por exemplo, Figura 8).
+
+Semelhante à nossa análise de levantamento (lift) na Seção 5.2, calculamos o levantamento entre causas e estratégias de correção e entre causas e primitivas de correção para bugs não bloqueadores. Entre as categorias de bugs com mais de 10 bugs, a correlação mais forte é entre a causa uso incorreto de canal e a primitiva de correção canal, com um valor de levantamento de 2,7. A causa função anônima e a estratégia de correção dados privados têm o segundo maior valor de levantamento, 2,23. Em seguida, o Uso incorreto de canal está fortemente correlacionado com Movimentos com um valor de levantamento de 2,21.
+
+Observação 9: Técnicas tradicionais de sincronização de memória compartilhada continuam sendo as principais correções para bugs não bloqueadores em Go, enquanto o canal é amplamente usado para corrigir não apenas bugs relacionados a canais, mas também bugs de memória compartilhada.
+
+Implicação 7: Enquanto os programadores Go continuam a usar mecanismos tradicionais de proteção de memória compartilhada para corrigir bugs não bloqueadores, eles preferem o uso de passagem de mensagens como uma solução em certos casos, possivelmente porque veem a passagem de mensagens como uma forma mais segura de comunicação entre threads.
+
+### 6.3 Detecção de Bugs Não Bloqueadores
+
+O Go fornece um detector de corrida de dados que utiliza o mesmo algoritmo happen-before que o ThreadSanitizer [53]. Ele pode ser ativado construindo um programa usando a flag ‘-race’. Durante a execução do programa, o detector de corrida cria até quatro palavras de sombra para cada objeto de memória para armazenar acessos históricos ao objeto. Ele compara cada novo acesso com os valores de palavra de sombra armazenados para detectar possíveis corridas.
+
+Utilizamos nossos 20 bugs não bloqueadores reproduzidos para avaliar quantos bugs o detector pode detectar. Rodamos cada programa com defeito 100 vezes com o detector de corrida ativado. A Tabela 12 resume o número de bugs detectados em cada categoria de causa raiz. O detector não relata falsos positivos.
+
+O detector de corrida de dados detectou com sucesso 7/13 bugs tradicionais e 3/4 bugs causados por funções anônimas. Para seis desses sucessos, o detector de corrida de dados relatou bugs em cada execução, enquanto para os outros quatro, cerca de 100 execuções eram necessárias antes que o detector relatasse um bug.
+
+Existem três possíveis razões pelas quais o detector de corrida de dados falhou em relatar muitos bugs não bloqueadores. Em primeiro lugar, nem todos os bugs não bloqueadores são corridas de dados; o detector de corrida não foi projetado para detectar esses outros tipos. Em segundo lugar, a eficácia do algoritmo acontece-antes subjacente depende da interleução de goroutines concorrentes. Finalmente, com apenas quatro palavras de sombra para cada objeto de memória, o detector não pode manter um histórico longo e pode perder corridas de dados.
+
+Implicação 8: Um simples detector tradicional de corrida de dados não consegue detectar efetivamente todos os tipos de bugs não bloqueadores em Go. Pesquisas futuras podem aproveitar nossa análise de bugs para desenvolver detectores de bugs não bloqueadores mais informativos e específicos para Go.
+
+## 7 Discussão e Trabalho Futuro
+
+Go defende tornar a criação de threads fácil e leve, além de usar a passagem de mensagens em vez de memória compartilhada para comunicação entre threads. De fato, observamos mais goroutines criadas em programas Go do que threads tradicionais e há um uso significativo de canais Go e outros mecanismos de passagem de mensagens. No entanto, nosso estudo mostra que, se não usadas corretamente, essas duas práticas de programação podem potencialmente causar bugs de concorrência.
+
+Memória compartilhada vs. passagem de mensagens. Nosso estudo constatou que a passagem de mensagens não torna necessariamente os programas multithread menos propensos a erros do que a memória compartilhada. Na verdade, a passagem de mensagens é a principal causa de bugs de bloqueio. Para piorar, quando combinada com primitivas de sincronização tradicionais ou com outras novas características e bibliotecas de linguagem, a passagem de mensagens pode causar bugs de bloqueio difíceis de detectar. A passagem de mensagens causa menos bugs não bloqueadores do que a sincronização de memória compartilhada e, surpreendentemente, foi até usada para corrigir bugs causados por sincronização errada de memória compartilhada. Acreditamos que a passagem de mensagens oferece uma forma limpa de comunicação entre threads e pode ser útil para passar dados e sinais. Mas eles são úteis apenas se usados corretamente, o que exige que os programadores entendam não apenas os mecanismos de passagem de mensagens, mas também outros mecanismos de sincronização do Go.
+
+Implicação na detecção de bugs. Nosso estudo revela muitos padrões de código com bugs que podem ser aproveitados para realizar a detecção de bugs de concorrência. Como um esforço preliminar, construímos um detector visando os bugs não bloqueadores causados por funções anônimas (por exemplo, Figura 8). Nosso detector já descobriu alguns novos bugs, um dos quais foi confirmado por desenvolvedores de aplicativos reais [12].
+
+Mais genericamente, acreditamos que a análise estática, além de algoritmos anteriores de detecção de deadlock, ainda será útil na detecção da maioria dos bugs de bloqueio do Go causados por erros na sincronização de memória compartilhada. Tecnologias estáticas também podem ajudar a detectar bugs causados pela combinação de canal e locks, como o mostrado na Figura 7.
+
+O uso incorreto de bibliotecas Go pode causar bugs tanto de bloqueio quanto não bloqueadores. Resumimos vários padrões sobre o uso incorreto de bibliotecas Go em nosso estudo. Detectores podem aproveitar os padrões que aprendemos para revelar bugs anteriormente desconhecidos. Nosso estudo também encontrou a violação das regras que o Go impõe com suas primitivas de concorrência como uma das principais razões para bugs de concorrência. Uma técnica dinâmica inovadora pode tentar impor essas regras e detectar violações em tempo de execução.
+
+## 8 Trabalhos Relacionados
+
+Estudo de Bugs do Mundo Real. Existem muitos estudos empíricos sobre bugs do mundo real [9, 24, 25, 29, 40, 44, 45]. Esses estudos orientaram com sucesso o design de várias técnicas de combate a bugs. Até onde sabemos, nosso trabalho é o primeiro estudo focado em bugs de concorrência em Go e o primeiro a comparar bugs causados por erros ao acessar memória compartilhada e erros ao passar mensagens.
+
+Combate a Bugs de Bloqueio. Como problema tradicional, existem muitos trabalhos de pesquisa combatendo deadlocks em C e Java [7, 28, 33–35, 51, 54, 55, 58, 59]. Embora úteis, nosso estudo mostra que há muitos bugs de bloqueio não relacionados a deadlocks no Go, que não são o alvo dessas técnicas. Algumas técnicas foram propostas para detectar bugs de bloqueio causados pelo uso incorreto de canais [38, 39, 49, 56]. No entanto, bugs de bloqueio podem ser causados por outras primitivas. Nosso estudo revela muitos padrões de código para bugs de bloqueio que podem servir como base para futuras técnicas de detecção de bugs de bloqueio.
+
+Combate a Bugs Não Bloqueadores. Muitos trabalhos de pesquisa anteriores são conduzidos para detectar, diagnosticar e corrigir bugs não relacionados a deadlocks, causados pela falha em sincronizar acessos à memória compartilhada [4, 5, 8, 14, 16, 17, 30–32, 43, 46, 47, 52, 62–64]. Eles são promissores para serem aplicados a bugs de concorrência em Go. No entanto, nosso estudo descobre que há uma porção não negligenciável de bugs não bloqueadores causados por erros durante a passagem de mensagens, e esses bugs não são cobertos por trabalhos anteriores. Nosso estudo enfatiza a necessidade de novas técnicas para combater erros durante a passagem de mensagens.
+
+## 9 Conclusão
+
+Como uma linguagem de programação projetada para concorrência, o Go fornece goroutines leves e passagem de mensagens baseada em canais entre goroutines. Diante do aumento do uso do Go em vários tipos de aplicativos, este artigo realiza o primeiro estudo abrangente e empírico sobre 171 bugs de concorrência do Go no mundo real, a partir de duas dimensões ortogonais. Muitas descobertas e implicações interessantes são fornecidas em nosso estudo. Esperamos que nosso estudo aprofunde a compreensão dos bugs de concorrência do Go e atraia mais atenção para esses bugs no Go.
+
+## ??
 
 O Go defende tornar a criação de threads fácil e leve e o uso da passagem de mensagens em vez de memória compartilhada para a comunicação entre threads. De fato, vimos mais goroutines criadas em programas Go do que threads tradicionais e há um uso significativo de canais do Go e outros mecanismos de passagem de mensagens. No entanto, nosso estudo mostrou que, se não forem usados corretamente, essas duas práticas de programação podem potencialmente causar bugs de concorrência.
 
@@ -40,3 +325,4 @@ Memória compartilhada vs. passagem de mensagens. Nosso estudo constatou que a p
 Implicações na detecção de bugs. Nosso estudo revela muitos padrões de código com bugs que podem ser explorados para realizar a detecção de bugs de concorrência. Como um esforço preliminar, construímos um detector que visa os bugs não bloqueantes causados por funções anônimas (por exemplo, Figura 8). Nosso detector já descobriu alguns novos bugs, um dos quais foi confirmado por desenvolvedores de aplicativos reais [12]. De forma mais geral, acreditamos que a análise estática, juntamente com algoritmos de detecção de deadlock existentes, ainda será útil na detecção da maioria dos bugs de bloqueio do Go causados por erros na sincronização de memória compartilhada. Tecnologias estáticas também podem ajudar na detecção de bugs causados ​​pela combinação de canais e bloqueios, como o exemplo na Figura 7. O uso incorreto das bibliotecas do Go pode causar tanto bugs de bloqueio quanto bugs não bloqueantes. Resumimos vários padrões de uso inadequado das bibliotecas do Go em nosso estudo. Detectores podem aproveitar os padrões que aprendemos para revelar bugs previamente desconhecidos. Nosso estudo também encontrou a violação das regras que o Go impõe com suas primitivas de concorrência como uma das principais razões para bugs de concorrência. Uma técnica dinâmica inovadora pode tentar impor essas regras e detectar violações em tempo de execução.
 
 Como uma linguagem de programação projetada para concorrência, o Go oferece goroutines leves e passagem de mensagens baseada em canais entre goroutines. Diante do aumento do uso do Go em diversos tipos de aplicativos, este artigo realiza o primeiro estudo abrangente e empírico de 171 bugs de concorrência reais do Go em duas dimensões ortogonais. Muitas descobertas interessantes e implicações são apresentadas em nosso estudo. Esperamos que nosso estudo aprofunde a compreensão dos bugs de concorrência no Go e chame mais atenção para esses bugs.
+
