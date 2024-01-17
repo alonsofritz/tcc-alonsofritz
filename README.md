@@ -20,6 +20,8 @@ Tema: Programação Concorrente com Go, e um comparativo entre GO, C++ e Java, c
 - [GoBench: A Benchmark Suite of Real-World Go Concurrency Bugs](https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=9370317)
 - [Who Goes First? Detecting Go Concurrency Bugs via Message Reordering](https://dl.acm.org/doi/pdf/10.1145/3503222.3507753)
 - [Automatically Detecting and Fixing Concurrency Bugs in Go Software Systems](https://dl.acm.org/doi/pdf/10.1145/3445814.3446756)
+- [Predicting Concurrency Bugs: How Many, What Kind and Where Are They?](https://sci-hub.se/https://doi.org/10.1145/2745802.2745807)
+- [A Study of the Internal and External Effects of Concurrency Bugs ](https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=5544315)
 
 - [Communicating Sequential Processes](https://www.cs.cmu.edu/~crary/819-f09/Hoare78.pdf)
 - [Concurrent Reading Writing](https://lamport.azurewebsites.net/pubs/rd-wr.pdf)
