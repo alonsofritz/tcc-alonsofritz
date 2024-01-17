@@ -15,8 +15,12 @@ Tema: Programação Concorrente com Go, e um comparativo entre GO, C++ e Java, c
 - [Learning from Mistakes — A Comprehensive Study on Real World Concurrency Bug Characteristics](https://www.cs.columbia.edu/~junfeng/09fa-e6998/papers/concurrency-bugs.pdf)
 - [How Do Fixes Become Bugs? A Comprehensive Characteristic Study on Incorrect Fixes in Commercial and Open Source Operating Systems](https://patterninsight.com/fileadmin/PI/products/downloads/Pattern_Insight_How_Do_Fixes_Become_Bugs.pdf)
 - [Multicore Processors: Challenges, Opportunities, Emerging Trends](https://www.tha.de/Binaries/Binary20964/Multicore-Embeddedfinal-revised.pdf)
+- [An Empirical Study of Messaging Passing Concurrency in Go Projects](https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=8668036)
 - 
-- 
+- [GoBench: A Benchmark Suite of Real-World Go Concurrency Bugs](https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=9370317)
+- [Who Goes First? Detecting Go Concurrency Bugs via Message Reordering](https://dl.acm.org/doi/pdf/10.1145/3503222.3507753)
+- [Automatically Detecting and Fixing Concurrency Bugs in Go Software Systems](https://dl.acm.org/doi/pdf/10.1145/3445814.3446756)
+
 - [Communicating Sequential Processes](https://www.cs.cmu.edu/~crary/819-f09/Hoare78.pdf)
 - [Concurrent Reading Writing](https://lamport.azurewebsites.net/pubs/rd-wr.pdf)
 
