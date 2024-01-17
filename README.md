@@ -14,6 +14,8 @@ Tema: Programação Concorrente com Go, e um comparativo entre GO, C++ e Java, c
 - [Understanding and Generating High Quality Patches for Concurrency Bugs](https://people.cs.uchicago.edu/~shanlu/paper/HFix_FSE2016.pdf)
 - [Learning from Mistakes — A Comprehensive Study on Real World Concurrency Bug Characteristics](https://www.cs.columbia.edu/~junfeng/09fa-e6998/papers/concurrency-bugs.pdf)
 - [How Do Fixes Become Bugs? A Comprehensive Characteristic Study on Incorrect Fixes in Commercial and Open Source Operating Systems](https://patterninsight.com/fileadmin/PI/products/downloads/Pattern_Insight_How_Do_Fixes_Become_Bugs.pdf)
+- [Multicore Processors: Challenges, Opportunities, Emerging Trends](https://www.tha.de/Binaries/Binary20964/Multicore-Embeddedfinal-revised.pdf)
+- 
 - 
 - [Communicating Sequential Processes](https://www.cs.cmu.edu/~crary/819-f09/Hoare78.pdf)
 - [Concurrent Reading Writing](https://lamport.azurewebsites.net/pubs/rd-wr.pdf)
