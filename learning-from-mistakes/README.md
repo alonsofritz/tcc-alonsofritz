@@ -45,3 +45,251 @@ Este trabalho fornece o primeiro (até onde sabemos) estudo abrangente das carac
 Nosso estudo revela diversas descobertas interessantes, oferecendo orientações úteis para detecção de bugs de concorrência, testes de programas concorrentes e design de linguagens de programação concorrentes. Resumimos nossas principais descobertas e suas implicações na Tabela 1.
 
 Embora acreditemos que as aplicações e bugs examinados representem bem um grande conjunto de aplicações concorrentes, não pretendemos tirar conclusões gerais sobre todas as aplicações concorrentes. Em particular, devemos observar que todas as características e descobertas obtidas neste estudo estão associadas aos quatro aplicativos examinados e às linguagens de programação que essas aplicações utilizam. Portanto, os resultados devem ser considerados levando em conta as aplicações específicas e nossa metodologia de avaliação (consulte a Seção 2.3 para nossa discussão sobre ameaças à validade).
+
+## 2. Metodologia
+### 2.1 Bug Sources
+Aplicações: Selecionamos quatro aplicativos de código aberto representativos para nosso estudo: MySQL, Apache, Mozilla e OpenOffice. Todos são aplicativos maduros (com histórico de desenvolvimento de 9 a 13 anos), grandes e concorrentes (com 1 a 4 milhões de linhas de código), com bancos de dados de bugs bem mantidos. Esses quatro aplicativos representam diferentes tipos de aplicativos de servidor (banco de dados e servidor web) e aplicativos de cliente (suíte de navegador e suíte de escritório). A concorrência é utilizada para diferentes finalidades nesses aplicativos. Aplicações de servidor geralmente usam concorrência para lidar com solicitações simultâneas de clientes. Podem ter centenas ou milhares de threads sendo executadas ao mesmo tempo. Aplicações de cliente e de escritório geralmente usam concorrência para sincronizar várias sessões de GUI e threads de trabalho em segundo plano.
+
+Bugs: Coletamos aleatoriamente bugs de concorrência dos bancos de dados de bugs desses aplicativos. Como esses bancos de dados contêm mais de meio milhão de relatórios de bugs, para coletar efetivamente bugs de concorrência deles, usamos um grande conjunto de palavras-chave relacionadas a bugs de concorrência, como 'race(s)', 'deadlock(s)', 'synchronization(s)', 'concurrency', 'lock(s)', 'mutex(es)', 'atomic', 'compete(s)', e suas variações. Dos milhares de relatórios de bugs que contêm pelo menos uma palavra-chave do conjunto acima, escolhemos aleatoriamente cerca de quinhentos relatórios de bugs com descrições de causa raiz claras e detalhadas, códigos-fonte e informações de correção de bugs. Em seguida, os verificamos manualmente para garantir que os bugs sejam realmente causados por suposições erradas dos programadores sobre a execução concorrente e, finalmente, obtivemos 105 bugs de concorrência. Estudamos separadamente dois tipos de bugs de concorrência: bugs de deadlock e bugs de concorrência não relacionados a deadlock. Esses dois tipos de bugs têm propriedades completamente diferentes e exigem abordagens diferentes de detecção e recuperação. Portanto, os separamos para facilitar a investigação. Finalmente, coletamos 105 bugs de concorrência, incluindo 74 bugs de concorrência não relacionados a deadlock e 31 bugs de deadlock. Os detalhes estão mostrados na Tabela 3.
+
+![Tabela 3](https://github.com/alonsofritz/tcc-alonsofritz/assets/37676673/30466c79-ab51-4e96-b072-363378087bda)
+
+### 2.2 Categorias Caracteristicas
+Para fornecer orientação para pesquisas futuras sobre a confiabilidade de programas concorrentes, neste trabalho, focamos em três aspectos das características de bugs de concorrência: padrão de bug, manifestação e estratégia de correção de bugs. Outras características, como impacto de falhas e processo de diagnóstico de bugs, serão discutidas brevemente no final.
+
+(1) Na dimensão do padrão de bug, classificamos bugs de concorrência não relacionados a deadlock em três categorias (bugs de violação de atomicidade, bugs de violação de ordem e outros bugs) com base em suas causas raízes, ou seja, quais tipos de intenções de sincronização são violadas. Definições detalhadas são mostradas na Tabela 2. Aqui, não classificamos corrida de dados como um padrão de bug. A razão é que uma corrida de dados pode indicar um bug de concorrência, mas também pode ser uma corrida benigna em muitos casos, por exemplo, while-flag. Além disso, livre de corrida de dados não significa livre de bugs de concorrência [12, 23]. Não dividimos ainda mais os deadlocks em subcategorias, pois a maioria deles é relativamente semelhante e simples.
+
+(2) Para as características de manifestação, estudamos a condição necessária para cada bug de concorrência se manifestar (denominada condição de manifestação, definida na Tabela 2), e depois discutimos bugs de concorrência com base em quantas threads, quantas variáveis (recursos) e quantos acessos estão envolvidos em suas condições de manifestação.
+
+(3) Para a estratégia de correção de bugs, estudamos tanto a estratégia de correção do patch final quanto os erros em patches intermediários. Também avaliamos como a memória transacional pode ajudar a evitar esses bugs. Toda a classificação relacionada é mostrada na Tabela 2.
+
+### 2.3 Ameaças à validade
+Assim como no trabalho anterior, estudos de características do mundo real estão sujeitos a um problema de validade. Ameaças potenciais à validade de nosso estudo de características são a representatividade das aplicações, dos bugs de concorrência usados em nosso estudo e de nossa metodologia de exame.
+
+Quanto à representatividade da aplicação, nosso estudo escolhe quatro aplicativos concorrentes baseados em servidor e cliente, escritos em C/C++, que são as linguagens de programação populares para esses tipos de aplicações. Acreditamos que esses quatro aplicativos representam bem as aplicações concorrentes baseadas em servidor e cliente, que são duas grandes classes de aplicações concorrentes. No entanto, nosso estudo pode não refletir as características de outros tipos de aplicações, como aplicações científicas, sistemas operacionais ou aplicações escritas em outras linguagens de programação (por exemplo, Java).
+
+Quanto à representatividade do bug, os bugs de concorrência que estudamos são selecionados aleatoriamente no banco de dados de bugs dos aplicativos mencionados. Eles fornecem boas amostras dos bugs corrigidos nesses aplicativos. Embora as características de bugs de concorrência não corrigidos ou não relatados possam ser diferentes, esses bugs provavelmente não são tão importantes quanto os bugs relatados e corrigidos examinados em nosso estudo.
+
+Em termos de nossa metodologia de exame, examinamos todas as informações relacionadas a cada bug examinado, incluindo explicações claras dos programadores, discussões em fóruns, patches de código-fonte, múltiplas versões de códigos-fonte e casos de teste que acionam os bugs. Além disso, também estamos familiarizados com as aplicações examinadas, pois as modificamos e as usamos em muitos de nossos trabalhos anteriormente publicados [22, 23, 35].
+
+Em geral, embora nossas conclusões não possam ser aplicadas a todos os programas concorrentes, acreditamos que nosso estudo captura as características de bugs de concorrência em duas grandes classes importantes de aplicações concorrentes: baseadas em servidor e baseadas em cliente. Além disso, a maioria dessas características é consistente em todos os quatro aplicativos examinados, indicando a validade de nossa metodologia de avaliação em certo grau. Além disso, não enfatizamos nenhum resultado quantitativo de características. Finalmente, também alertamos os leitores para considerar nossas descobertas juntamente com a metodologia acima e as aplicações selecionadas.
+
+![Figura 1, 2 e 3](https://github.com/alonsofritz/tcc-alonsofritz/assets/37676673/e01809cc-fc84-49a0-ab03-43981048bf47)
+
+## Estudo de padrões de Bugs
+Diferentes padrões de bugs geralmente exigem abordagens diferentes de detecção e diagnóstico. Na Tabela 4, classificamos os padrões dos bugs de concorrência não relacionados a deadlock examinados em três categorias: Atomicidade, Ordem e Outros, que são descritos na Tabela 2. Observe que as categorias são distintas entre si pela causa raiz de um bug, independentemente das possíveis estratégias de correção do bug.
+
+![Tabela 4](https://github.com/alonsofritz/tcc-alonsofritz/assets/37676673/a66b4e0e-0775-4802-b9a3-f31056a60785)
+
+![Figura 4 e 5](https://github.com/alonsofritz/tcc-alonsofritz/assets/37676673/16331198-38cb-480d-b3a5-183b016d575b)
+
+**Descoberta (1):** A maioria (72 de 74) dos bugs de concorrência não relacionados a deadlock examinados são abrangidos por dois padrões simples: violação de atomicidade e violação de ordem.
+
+**Implicações:** A detecção de bugs em programas concorrentes, os testes e o design de linguagens devem primeiro se concentrar nesses dois principais padrões de bugs.
+
+A Descoberta (1) pode ser explicada pelo fato de que os programadores geralmente colocam suas intenções em regiões atômicas e ordens de execução, mas não é fácil impor todas essas intenções corretamente e completamente na implementação. Como os programadores pensam de forma sequencial, tendem a assumir que pequenas regiões de código serão executadas atomicamente. Por exemplo, na Figura 1, os programadores assumem que se S1 lê um valor não nulo de thd->proc info, S2 também lerá o mesmo valor. No entanto, tal suposição de atomicidade pode ser violada por S3 durante a execução concorrente, levando a uma falha no programa.
+
+É também comum os programadores assumirem uma ordem entre duas operações de diferentes threads, mas podem esquecer de impor essa ordem. Como resultado, uma das duas operações pode ser executada mais rápido (ou mais devagar) do que a suposição dos programadores, e isso faz com que o bug de ordem se manifeste. No bug do Mozilla mostrado na Figura 2, é fácil para os programadores assumirem erroneamente que a thread 2 dereferenciará mThread após a inicialização pela thread 1, porque a thread 2 é criada pela thread 1. No entanto, na execução real, a thread 2 pode ser muito rápida e dereferenciar mThread antes que mThread seja inicializado. Essa ordem inesperada leva a uma falha no programa. Observa-se que, mesmo que o bug possa ser corrigido com locks, a causa raiz do bug não é uma violação de atomicidade, mas uma violação de ordem.
+
+Bugs de concorrência que violam outros tipos de intenções dos programadores também existem, mas são muito mais raros, como mostrado na Tabela 4. A Figura 3 mostra um exemplo. Em uma versão do MySQL, os programadores usam um limite de tempo fatal para detectar deadlock. O servidor travará se qualquer thread esperar por um bloqueio por mais tempo do que o limite fatal. No entanto, ao configurar o limite, os programadores subestimam a carga de trabalho. Como resultado, os usuários descobriram que o servidor MySQL continua travando sob carga intensa (com configuração de 2048 threads). Essa suposição relacionada ao desempenho não é nem uma intenção de atomicidade nem de ordem. Esse bug é corrigido limitando o número de threads de trabalho.
+
+**Descoberta (2):** Um número significativo (24 de 74) dos bugs de concorrência não relacionados a deadlock examinados são bugs de ordem, os quais não são abordados por trabalhos anteriores de detecção de bugs.
+
+**Implicações:** Novas técnicas de detecção de bugs são desejadas para lidar com bugs de ordem.
+
+Como discutimos anteriormente, é comum os programadores assumirem uma ordem específica entre duas operações de duas threads. Especificamente, os programadores podem ter uma intenção de ordem i) entre uma escrita e uma leitura (Figura 2) para uma variável; ii) entre duas escritas (Figura 4) para uma variável; ou iii) entre dois grupos de acessos a um grupo de variáveis (Figura 5). Na Figura 4, os programadores esperam que S2 inicialize io pending antes de S4 atribuir um novo valor, FALSE, a ela. No entanto, a execução da leitura assíncrona pode ser muito rápida e S4 pode ser executado antes de S2, ao contrário da expectativa dos programadores. Isso faz com que a thread 1 fique travada. Em outro exemplo mostrado na Figura 5, js UnpinPinnedAtom libera todos os elementos na matriz de átomos. Este conjunto de acessos à memória à matriz inteira é esperado ocorrer após js MarkAtom, que pode acessar alguns elementos em átomos.
+
+Observe que os bugs de ordem acima são diferentes de bugs de corrida de dados e bugs de violação de atomicidade. Mesmo que dois acessos à memória à mesma variável sejam protegidos pelo mesmo bloqueio ou duas regiões de código conflitantes sejam atômicas entre si, a ordem de execução entre eles ainda pode não ser garantida. Devemos também observar que alguns bugs de violação de ordem podem ser corrigidos usando bloqueios de granulação mais grossa, como no exemplo da Figura 2 e Figura 4; alguns outros não podem ser corrigidos por bloqueios, como no exemplo da Figura 5 e Figura 7 (será discutido posteriormente). Isso não está relacionado à causa raiz do bug e não afeta nossa classificação de padrões de bugs.
+
+Embora sejam importantes e comuns, bugs de violação de ordem não foram bem estudados por pesquisas anteriores. Muitos bugs de ordem serão ignorados pelos detectores de bugs de concorrência existentes, que se concentram principalmente em bugs de corrida ou bugs de atomicidade. Novas técnicas são desejadas para resolver os problemas de ordem.
+
+## 4. Estudo da manifestação do bug
+A condição de manifestação de um bug de concorrência geralmente é uma ordem específica entre um conjunto de acessos à memória ou eventos do sistema. Nesta seção, estudamos as características da manifestação real dos bugs de concorrência, seguindo a metodologia definida na Tabela 2. Vamos discutir orientações para testes de programas concorrentes e detecção de bugs de concorrência com base em nossas observações.
+
+### 4.1 Quantas threads estão envolvidas?
+
+**Descoberta (3):** A manifestação da maioria (101 de 105) dos bugs de concorrência examinados envolve no máximo duas threads.
+**Implicações:** Os testes de programas concorrentes podem testar em pares as threads do programa, o que reduz a complexidade dos testes sem perder muito na capacidade de expor bugs.
+
+A Descoberta (3) nos diz que, mesmo que os programas de servidor examinados usem centenas de threads, na maioria dos casos, apenas um pequeno número (na maioria apenas duas) de threads está envolvido na manifestação de um bug de concorrência.
+A razão subjacente para isso é que a maioria das threads não interage intimamente com muitas outras, e a maioria das comunicações e colaborações ocorre entre duas ou um pequeno grupo de threads. Como resultado, as condições de manifestação da maioria dos bugs de concorrência não envolvem muitas threads. Por exemplo, todos os bugs apresentados na Seção 3, exceto o mostrado na Figura 3, estão garantidos para se manifestar se sua execução seguir certas ordens parciais (marcadas por linhas pontilhadas nas figuras) entre duas threads.
+
+![Tabela 5](https://github.com/alonsofritz/tcc-alonsofritz/assets/37676673/6a1cd0f6-f9ef-4cfc-9eec-972a64c5af41)
+
+Devemos observar que esta descoberta não é oposta à observação comum de que bugs de concorrência são às vezes mais fáceis de manifestar em carga de trabalho intensa (execução simultânea de muitas threads). Em muitos casos, a condição de manifestação envolve apenas duas threads. A carga de trabalho intensa aumenta a competição por recursos e a intensidade de troca de contexto. Isso aumenta a possibilidade de atingir certas ordens entre as duas threads que podem desencadear o bug. A condição de manifestação ainda envolve apenas duas threads.
+
+Nossa descoberta sugere que os testes podem se concentrar nas ordens de execução entre acessos de cada par de threads. Essa técnica de teste em pares pode evitar que a complexidade dos testes aumente exponencialmente com o número de threads. Ao mesmo tempo, poucos bugs de concorrência seriam perdidos.
+
+Há também casos em que a manifestação do bug depende não apenas dos acessos à memória dentro do programa, mas também de eventos ambientais (como mostrado na coluna 'Env' na Tabela 5). Por exemplo, um bug do Mozilla não pode ser acionado a menos que outro programa modifique o mesmo arquivo simultaneamente ao Mozilla. Expor tais bugs requer suporte especial do sistema.
+
+**Descoberta (4):** A manifestação de alguns (7 de 31) bugs de concorrência de deadlock envolve apenas uma thread.
+**Implicações:** Este tipo de bug é relativamente fácil de detectar e evitar. Técnicas de detecção de bugs e linguagens de programação podem tentar eliminar esses bugs simples primeiro.
+
+Isso geralmente ocorre quando uma thread tenta adquirir um recurso mantido por ela mesma. Detectar e analisar esse tipo de bug é relativamente fácil, porque não precisamos considerar a contenção de outros componentes de execução concorrente.
+
+4.2 Quantas variáveis estão envolvidas?
+Os bugs de concorrência são problemas de sincronização entre acessos a uma variável ou várias variáveis? Para responder a essa pergunta, examinamos o número de variáveis (ou recursos) envolvidas na manifestação de cada bug de concorrência. O resultado do exame é mostrado na Tabela 6.
+
+**Descoberta (5):** 66% (49 de 74) dos bugs de concorrência não relacionados a deadlock examinados envolvem apenas uma variável.
+**Implicações:** Focar nos acessos concorrentes a uma variável é uma boa simplificação para a detecção de bugs de concorrência.
+
+![Tabela 6](https://github.com/alonsofritz/tcc-alonsofritz/assets/37676673/b2a0ce52-2c7e-4506-aed3-53e47225fe13)
+
+![Figura 6](https://github.com/alonsofritz/tcc-alonsofritz/assets/37676673/0bdf6bca-c735-44b8-a92e-ee46b22d9abf)
+
+A Descoberta (5) confirma nossa intuição. Inverter a ordem de dois acessos a locais de memória diferentes não altera diretamente o estado do programa e, portanto, é menos provável que cause problemas. As Figuras 1, 2 e 4 são todos exemplos de bugs de concorrência de variável única: sua manifestação pode ser garantida por uma determinada ordem entre os acessos a uma variável. Essa descoberta apoia a suposição de variável única adotada por muitas ferramentas existentes de detecção de bugs. Por exemplo, a detecção de bugs de corrida de dados [37, 42] verifica a sincronização entre acessos a uma variável; algumas ferramentas de detecção de bugs de violação de atomicidade também se concentram em regiões atômicas relacionadas a uma variável [23, 41].
+
+**Descoberta (6):** Um número significativo (34%) de bugs de concorrência não relacionados a deadlock envolve mais de uma variável.
+**Implicações:** Precisamos de novas ferramentas de detecção de bugs de concorrência para lidar com bugs de concorrência de várias variáveis.
+
+Bugs de concorrência de várias variáveis geralmente ocorrem quando acessos não sincronizados a variáveis correlacionadas causam um estado inconsistente no programa. Conexões semânticas entre variáveis são comuns e, portanto, bugs de concorrência de várias variáveis também são comuns. A Figura 6 mostra um exemplo de bug de concorrência de várias variáveis no Mozilla. Neste exemplo, mOffset e mLength juntos marcam a região de caracteres úteis armazenados na string dinâmica mContent. Os acessos concorrentes das Threads 1 e 2 a essas três variáveis devem ser sincronizados, caso contrário, a Thread 1 pode ler valores inconsistentes e acessar um endereço de memória inválido. Controlar a ordem de acessos à memória de qualquer variável única não pode garantir que o bug se manifeste. Por exemplo, não há problema se a Thread 1 ler mContent antes ou depois da modificação da Thread 2 a todas as três variáveis. A condição necessária para a manifestação do bug é que a Thread 1 use as três variáveis correlacionadas no meio da modificação da Thread 2 a essas três variáveis. Como discutido anteriormente, a maioria das ferramentas existentes de detecção de bugs se concentra apenas em bugs de concorrência de variável única. Embora essa simplificação forneça um bom ponto de partida para a detecção de bugs de concorrência, pesquisas futuras não devem ignorar o problema de bugs de concorrência de várias variáveis. A dificuldade de detectar bugs de concorrência de várias variáveis é que é difícil inferir quais acessos, a diferentes variáveis, devem ser bem sincronizados. Resolver esse problema beneficiará não apenas a detecção automática de bugs de concorrência, mas também fornecerá dicas úteis para os programadores especificarem transações corretas ou regiões atômicas para ferramentas de memória transacional ou detecção de bugs de atomicidade [12].
+
+**Descoberta (7):** 97% (30 de 31) dos bugs de concorrência de deadlock examinados envolvem no máximo dois recursos.
+**Implicações:** Testes de programas concorrentes orientados a deadlock podem testar em pares a ordem entre aquisição e liberação de dois recursos.
+
+Entre os bugs de deadlock examinados, apenas um bug é acionado por três threads esperando circularmente por três recursos. Aproveitando essa descoberta, testes em pares de recursos podem evitar que a complexidade dos testes aumente exponencialmente com o número total de recursos.
+
+### 4.3 Quantos acessos estão envolvidos?
+Observamos que a manifestação da maioria dos bugs de concorrência envolve apenas dois threads e um pequeno número de variáveis. No entanto, o número de acessos de um thread a cada variável ainda pode ser enorme. Portanto, precisamos estudar quantos acessos estão envolvidos na manifestação do bug.
+
+![Tabela 7](https://github.com/alonsofritz/tcc-alonsofritz/assets/37676673/3feb656e-14c8-4230-8571-a5fe759092f7)
+
+**Descoberta (8.1):** 90% (67 de 74) dos bugs de concorrência examinados podem manifestar-se de forma determinística se certas ordens entre no máximo quatro acessos à memória forem aplicadas.
+**Descoberta (8.2):** 97% (30 de 31) dos bugs de deadlock examinados podem manifestar-se de forma determinística se certas ordens entre no máximo quatro operações de aquisição/liberação de recursos forem aplicadas.
+**Implicações:** O teste de programas concorrentes pode se concentrar na ordem parcial entre pequenos grupos de acessos. Isso simplifica o espaço de teste de interleaving de exponencial para polinomial em relação ao número total de acessos, com pouca perda na capacidade de expor bugs.
+
+A Descoberta (8.1) pode ser facilmente compreendida, considerando que a maioria dos bugs de concorrência examinados possui padrões simples e envolve um pequeno número de variáveis. A maioria das exceções vem desses bugs que envolvem mais de dois threads e/ou mais de duas variáveis.
+
+A Descoberta (8.2) também é natural, considerando que a maioria dos nossos bugs de deadlock examinados envolve apenas dois recursos.
+
+As descobertas acima têm implicações significativas para o teste de programas concorrentes. O desafio no teste de programas concorrentes é que o número de todas as possíveis interleavings é exponencial ao número de acessos dinâmicos à memória, o que é muito grande para ser explorado completamente. Nossa descoberta fornece suporte para um design mais eficaz de teste de interleaving [21]: explorar todas as ordens possíveis dentro de pequenos grupos de acessos à memória, por exemplo, grupos de 4 acessos à memória. A complexidade desse design é apenas polinomial em relação ao número de acessos dinâmicos à memória, uma redução significativa em relação ao esquema de teste de all-interleaving de tamanho exponencial. Além disso, a capacidade de exposição de bugs desse design é quase tão boa quanto explorar todas as interleavings. Ele perderia apenas alguns bugs em nossa análise.
+
+Um trabalho recente de verificação de modelo [28] utiliza a heurística de iniciar a verificação a partir de interleavings com pequeno número de trocas de contexto. Nosso estudo fornece suporte para essa heurística.
+
+É claro que impor uma ordem parcial específica entre um conjunto de acessos não é trivial. A entrada do programa e muitos acessos precisam ser controlados para alcançar isso. Como aproveitar nossa descoberta para possibilitar o teste prático e eficaz de programas concorrentes, bem como a verificação de modelos, permanece como trabalho futuro.
+
+## 5. Estudo de correção de bugs
+### 5.1 Estratégias de correção
+Antes de verificarmos como os bugs do mundo real foram corrigidos, nossa suposição era de que adicionar ou alterar travas seria a forma mais comum de corrigir bugs de concorrência. No entanto, o resultado característico é contrário à nossa suposição, conforme mostrado na Tabela 8.
+
+![Tabela 8](https://github.com/alonsofritz/tcc-alonsofritz/assets/37676673/c14d9f14-d7f8-4e4c-9333-8a800971c11d)
+
+**Resultado (9):** Adicionar ou alterar travas não é a principal estratégia de correção. É utilizado em apenas 20 dos 74 bugs de concorrência não relacionados a deadlock que examinamos.
+**Implicação:** Não há uma solução única para corrigir bugs de concorrência. Apenas informar aos programadores que determinados acessos conflitantes não são protegidos pela mesma trava não é suficiente para corrigir bugs de concorrência.
+
+![Figura 7](https://github.com/alonsofritz/tcc-alonsofritz/assets/37676673/43946284-c831-405b-bbe4-7c6be9b6d4ce)
+
+Existem duas razões para essa controvérsia. Primeiro, as travas não podem garantir impor algumas intenções de sincronização, como "A deve ocorrer antes de B". Portanto, adicionar/alterar travas não pode corrigir certos tipos de bugs. A Figura 5 mostra um exemplo disso. Apresentamos outro exemplo simples na Figura 7. Em segundo lugar, mesmo que adicionar/alterar travas possa corrigir um bug, em muitos casos, não é a melhor estratégia, pois pode prejudicar o desempenho ou introduzir novos bugs, como bugs de deadlock.
+
+A seguir, descrevemos diferentes estratégias, além de adicionar/alterar travas, usadas pelos programadores. Veremos que essas estratégias geralmente exigem uma compreensão profunda da semântica do programa. Ao mesmo tempo, geralmente têm um desempenho melhor do que as correções baseadas em travas correspondentes, se existirem.
+
+(1) Verificação de condição (denominada COND): A verificação de condição pode ser usada de diferentes maneiras para ajudar a corrigir bugs de concorrência. Uma maneira é usar uma bandeira while para corrigir bugs relacionados à ordem, como o bug mostrado na Figura 5. Outra maneira é adicionar uma verificação de consistência para monitorar os estados do programa relacionados ao bug. Isso permite que o programa detecte interleavings com bugs e restaure os estados do programa. Por exemplo, para corrigir o bug mostrado na Figura 6, o programa realiza uma verificação de consistência if(strlen(mContent) >= mOffset + mLength) antes de executar a função putc. O putc será pulado se a verificação de consistência falhar. Em outro exemplo mostrado na Figura 8, a condição (n!=block->n) é verificada para ver se a variável compartilhada block->n foi sobrescrita desde a última leitura. Se n não estiver consistente com block->n, o programa reverte e lê block->n novamente. Observe que a estratégia de correção mencionada não elimina a interleaving com bug, que geralmente é o propósito das correções baseadas em travas. Em vez disso, ela se concentra na detecção de interleavings com bugs e garante que os estados do programa corrompidos por essas interleavings com bugs possam ser recuperados a tempo. Tem um desempenho melhor do que correções baseadas em travas correspondentes.
+
+![Figura 8](https://github.com/alonsofritz/tcc-alonsofritz/assets/37676673/369e6e78-882a-4279-a3ab-f232ba0716e6)
+
+(2) Troca de código (denominada Switch): Trocar a ordem de certas instruções de código pode corrigir alguns bugs relacionados à ordem. Por exemplo, o bug de ordem mostrado na Figura 4 é corrigido trocando as instruções S1 e S2, para que S2 seja sempre executado antes de S4.
+
+(3) Alteração de design de algoritmo/estrutura de dados (denominada Design): Isso inclui diferentes tipos de alterações de algoritmo e estrutura de dados que ajudam a alcançar uma sincronização correta. Algumas mudanças de design são simples, apenas modificando algumas estruturas de dados. Por exemplo, no bug #7209 do MySQL, o bug é causado por acessos conflitantes não protegidos a uma variável compartilhada HASH::current record. Os programadores reconhecem que essa variável não precisa ser compartilhada. Eles simplesmente movem o campo current record fora da classe HASH, tornando-o uma variável local para cada thread, e corrigem o bug. Como outro exemplo, no bug #201134 do Mozilla, uma thread precisa realizar uma série de operações em uma variável compartilhada nsCertType. Para impor a atomicidade dessa série de operações, os programadores simplesmente fazem o programa ler nsCertType em uma variável local, realizam operações na variável local e armazenam o valor de volta em nsCertType no final. Algumas mudanças de design são mais complicadas, envolvendo uma reformulação do algoritmo. Por exemplo, no bug #131447 do Mozilla, os programadores alteraram um algoritmo de manipulação de mensagens e enfileiramento para tolerar temporizações especiais quando uma mensagem de resposta chega antes que sua função de retorno de chamada correspondente esteja pronta.
+
+Como podemos ver, corrigir bugs de concorrência é muito mais complicado do que simplesmente adicionar ou alterar operações de trava. Ferramentas de detecção de corrida podem ajudar os programadores a realizar essas correções relacionadas a travas, mas isso não é suficiente. Deseja-se ter mais ferramentas para ajudar os programadores a entender o padrão do bug, a condição de consistência associada a cada bug, etc. Por exemplo, se os programadores souberem que o bug é um bug de violação de ordem e também souberem qual é a condição de consistência, é fácil criar uma correção de verificação de condição. Este é o desafio para futuras pesquisas em detecção e diagnóstico de bugs de concorrência.
+
+![Tabela 9](https://github.com/alonsofritz/tcc-alonsofritz/assets/37676673/b45ff392-d128-4eca-a292-6a52c851ebdb)
+
+**Descoberta (10):** A estratégia de correção mais comum (usada em 19 de 31 casos) para os bugs de deadlock examinados é permitir que uma thread desista de adquirir um recurso, como uma trava. Essa estratégia é simples, mas pode introduzir outros bugs não relacionados a deadlock.
+**Implicação:** Precisamos prestar atenção à correção de alguns bugs de deadlock "corrigidos".
+
+Em muitos casos, os programadores acham desnecessário ou não compensador adquirir uma trava dentro de determinado contexto do programa. Portanto, eles simplesmente abandonam a aquisição de recursos para evitar o deadlock. No entanto, essa estratégia pode introduzir bugs de concorrência não relacionados a deadlock. Em alguns de nossos relatórios de bugs examinados, os programadores afirmam explicitamente que sabem que a correção introduzirá um novo bug de concorrência não relacionado a deadlock. Mesmo assim, eles adotam a correção, porque apostam que a probabilidade de ocorrência do bug não relacionado a deadlock é pequena. No futuro, técnicas combinando concorrência otimista e rollback-reexecução, como TM, podem ajudar a corrigir alguns bugs de deadlock. Claro, o uso dessas técnicas também deve ser feito com cuidado, pois podem introduzir problemas de live-lock.
+
+### 5.2 Erros durante a correção de bugs
+Corrigir bugs é difícil. Alguns patches lançados pelos programadores ainda estão com defeitos. Para investigar a natureza dos patches com defeitos, coletamos todos os patches distintos com defeitos dos 57 bugs de concorrência do Mozilla 1. Especificamente, primeiro reunimos todos os patches intermediários (não finais) enviados pelos programadores do Mozilla para esses 57 bugs. Em seguida, verificamos manualmente cada patch e filtramos os patches que não são de correção de bugs, que apenas alteram comentários ou estruturas de código para fins de manutenção.
+Nosso estudo descobre que 17 dos 57 bugs do Mozilla têm pelo menos um patch com defeito. Em média, 0,4 patches com defeito foram lançados antes de cada patch final correto. Entre os 23 patches com defeito distintos, 6 deles apenas diminuem a probabilidade de ocorrência do bug de concorrência original, mas não corrigem completamente o bug original (um exemplo é mostrado na Figura 9). 5 deles introduzem novos bugs de concorrência. Os outros 12 introduzem novos bugs não relacionados a concorrência. Os programadores precisam de ajuda para melhorar a qualidade de seus patches.
+
+### 5.3 Discussão: prevenção de bugs
+Bons idiomas de programação devem ajudar a evitar alguns bugs durante a implementação. A memória transacional (TM) é uma tendência popular de recurso de linguagem de programação para facilitar a programação concorrente. Para estimar seus benefícios e o que mais é necessário nessa direção, estudamos os 105 bugs de concorrência para ver quantos deles podem ser potencialmente evitados com suporte a TM. Além disso, estudamos quais são os problemas que o design futuro de linguagens de programação concorrentes precisa abordar.
+
+![Figura 9](https://github.com/alonsofritz/tcc-alonsofritz/assets/37676673/443d5291-eb16-4a45-8475-44b57aba1075)
+
+Novamente, nossa análise deve ser interpretada considerando nossas aplicações examinadas e metodologia de avaliação em mente, conforme discutido na Seção 2.3. Além disso, como diferentes designs de TM podem ter diferentes recursos, em nossa discussão, nos concentramos nas propriedades básicas de atomicidade e isolamento de TM. Discutimos os benefícios e preocupações de maneira geral, com base em tais designs básicos de TM [2, 16, 25, 26]. É definitivamente possível que designs avançados de TM possam abordar algumas das preocupações que discutiremos, que é exatamente o propósito de nossa discussão: forn**ecer mais informações do mundo real e ajudar a melhorar o design de TM.
+
+**Descoberta (11): TM pode ajudar a evitar muitos bugs de concorrência (41 dos 105 bugs de concorrência que examinamos).
+**Implicação:** Embora TM não seja uma solução milagrosa, ela pode facilitar os programadores a expressarem corretamente suas intenções de sincronização em muitos casos e ajudar a evitar uma grande parte dos bugs de concorrência.
+
+Bugs de violação de atomicidade e bugs de deadlock com regiões críticas relativamente pequenas e simples podem se beneficiar mais de TM, que pode ajudar os programadores a especificar claramente esse tipo de intenção de atomicidade. A Figura 8 mostra um exemplo, onde os programadores usam uma verificação de consistência com reexecução para corrigir o bug. Aqui, uma transação  (com aborto, rollback e replay) é exatamente o que os programadores desejam.
+
+**Descoberta (12):** TM pode potencialmente ajudar a evitar muitos bugs de concorrência (44 dos 105 bugs de concorrência que examinamos), se algumas preocupações puderem ser abordadas, como mostrado na Tabela 10.
+**Implicação:** O design de TM pode combinar suportes do sistema e outras técnicas para resolver algumas dessas preocupações, e assim facilitar ainda mais a programação concorrente.
+
+Uma preocupação, não surpreendentemente, são operações de I/O. Como operações como I/O são difíceis de reverter, é difícil usar TM para proteger a atomicidade de regiões de código que incluem tais operações. Tome o bug de concorrência na Figura 1 como exemplo. Como S2 envolve uma operação de arquivo, o TM pode precisar de técnicas de desfazer não triviais para proteger a região atômica S1-S2.
+Outras preocupações, como tamanho da região atômica e natureza especial do código, também existem. Por exemplo, as regiões de código atômico de vários bugs do Mozilla incluem todo o processo de coleta de lixo. Essas regiões podem ter uma pegada de memória muito grande para serem tratadas efetivamente pelo TM de hardware.
+Muitas das preocupações acima são abordáveis no TM, mas com maior sobrecarga e complexidade. Por exemplo, algumas das preocupações com o desfazer podem ser abordadas usando suportes do sistema. Transações muito longas podem ser tratadas combinando TMs de software e hardware.
+
+**Descoberta (13):** 20 dos 105 bugs de concorrência que examinamos não podem se beneficiar dos designs básicos de TM, porque as intenções violadas pelos programadores, como intenções de ordem, não podem ser garantidas pelo TM básico.
+**Implicações:** Além das intenções de atomicidade, há também uma necessidade significativa de recursos de linguagens de programação concorrentes para ajudar os programadores a expressar facilmente intenções de ordem.
+
+A intenção de ordem dos programadores é o principal tipo de intenção que não pode ser facilmente aplicada pelo design básico do TM ou por travas. Em geral, os designs básicos do TM não conseguem ajudar a impor a intenção de que A deve ser executado antes de B. Portanto, eles não conseguem ajudar a evitar muitos bugs relacionados a violações de ordem 2. Entre todos os bugs de violação de ordem, encontramos um subtipo de intenções de ordem que são extremamente difíceis de serem aplicadas pelos designs básicos do TM: A deve ser executado antes de B ou não deve ser executado de forma alguma. Em outras palavras, os programadores não querem que B espere por A. Eles simplesmente pulam A se B já foi executado. Por exemplo, em um bug do Mozilla, a thread 1 continua inserindo entidades em um cache e a thread 2 destruiria o cache em algum momento. Com base na descrição no relatório de bug, os programadores não querem que a thread 2 espere a thread 1 terminar todas as inserções. O programa simplesmente ignora qualquer tentativa de inserção após o cache ser destruído. Isso ocorre em 7 bugs.
+Para ajudar a evitar esses 20 bugs, o design semântico, em vez dos esquemas de implementação, do TM básico precisa ser aprimorado. Recentemente, alguns designs de TM [5, 17] estão equipados com semântica rica (como watch/retry, retry/orElse) e podem ajudar a impor algumas das intenções de sincronização acima. Esperamos que nosso estudo de características de bugs possa ajudar a pesquisa futura a decidir pelo melhor design de TM.
+
+## Outras Caracteristicas
+Impactos dos Bugs: Entre os bugs de concorrência examinados, 34 deles podem causar falhas no programa e 37 deles levam a travamentos do programa. Isso valida que o bug de concorrência é um problema sério de confiabilidade. Alguns bugs de concorrência são muito difíceis de reproduzir. Em um relatório de bug (Mozilla#52111), o relator reclamou que "Eu desenvolvo o Mozilla o dia inteiro, e vejo esse bug apenas uma vez por dia". Em outro relatório de bug (Mozilla#72599), o relator disse que "Eu vi isso apenas uma vez em g (nunca em outras máquinas). Talvez o processador duplo de g faça com que isso ocorra".
+
+Casos de teste são essenciais para o diagnóstico de bugs. As discussões dos programadores mostram que um bom caso de teste para reproduzir um bug de concorrência é muito importante para o diagnóstico. No relatório de bug do Mozilla #73291, os programadores desistiram desse bug e fecharam o relatório de bug, porque não conseguiam reproduzir o bug. Felizmente, alguém descobriu uma maneira confiável de reproduzir o bug, e o bug foi corrigido posteriormente. Em outro relatório de bug do Mozilla (Mozilla#72599), os programadores finalmente desistiram de reproduzir o bug e simplesmente enviaram um patch com base em suas "suposições", o que levou a uma correção incorreta.
+
+Os programadores carecem de ferramentas de diagnóstico. Pelos relatórios de bug, observamos que muitos bugs de concorrência são diagnosticados apenas pelos programadores lendo o código-fonte. Por exemplo, em 29 dos 57 bugs do Mozilla, os relatórios de bug não mencionavam que os programadores já haviam utilizado informações de ferramentas, despejos de núcleo ou rastreamentos de pilha, etc. Às vezes, os programadores tentavam usar o gdb, mas não conseguiam obter informações úteis. Nunca vimos programadores mencionarem que usaram ferramentas automáticas de diagnóstico. Em contraste, em muitos relatórios de bug sobre bugs de memória, os programadores mencionaram que receberam ajuda do Valgrind, Purify, etc [20].
+
+## 7. Trabalhos Relacionados
+**Estudos de características de bugs** Muito trabalho foi realizado para estudar as características de bugs em grandes sistemas de software. Muitos desses estudos fornecem informações valiosas para ajudar a melhorar a confiabilidade do software sob diferentes aspectos, como detecção de bugs [8, 38], tolerância a falhas [14], recuperação de falhas [6], previsão de falhas e testes [32], etc. Em um trabalho recente [43], as pessoas também estudaram como as tendências recentes (disponibilidade de ferramentas comerciais, código aberto, etc.) afetam as características gerais de bugs (distribuição de bugs, tempo de correção) para todos os bugs.
+Infelizmente, poucos trabalhos anteriores estudaram bugs de concorrência, provavelmente porque bugs de concorrência do mundo real são difíceis de coletar e analisar. Por exemplo, em um estudo anterior [6], apenas 12 bugs de concorrência foram coletados de três aplicativos: MySQL, GNOME e Apache. Nessa situação, um estudo anterior sobre padrões de bugs de concorrência [11] teve que pedir a estudantes que escrevessem propositalmente programas concorrentes contendo bugs, o que não representa bem as características reais de bugs do mundo real. Ao contrário dos trabalhos anteriores, estudamos os padrões, manifestações e correções de 105 bugs reais de concorrência em quatro grandes aplicativos de código aberto. Nosso estudo fornece muitas descobertas e implicações para abordar os problemas de correção na programação concorrente.
+
+**Melhorando a confiabilidade de programas concorrentes** Técnicas para melhorar a qualidade de programas concorrentes estão relacionadas ao nosso trabalho. Devido às limitações de espaço, discutimos brevemente os trabalhos que não foram abordados nas seções anteriores.
+
+Em testes de software, foram propostos diferentes critérios de cobertura para testar seletivamente as intercalações de programas concorrentes. Infelizmente, essas propostas são ou muito complicadas [39] ou baseadas em heurísticas [4, 9]. Nosso estudo sobre a manifestação de bugs de concorrência pode ajudar a entender o equilíbrio entre a complexidade de teste e a capacidade de exposição de bugs, além de auxiliar no design de critérios de cobertura mais eficientes.
+
+Na área de linguagens de programação, também são estudados designs diferentes do que a memória transacional. O AtomicSet [40] associa restrições de sincronização aos dados em vez da região de código. Esse design pode ajudar a evitar alguns bugs de concorrência relacionados a várias variáveis. O Autolocker [24] facilita aos programadores a especificação de regiões atômicas atribuindo automaticamente travas. Nosso estudo de características fornece mais motivação para esses novos recursos de linguagem.
+
+## Conclusões e Trabalho Futuro
+Este artigo apresenta um estudo abrangente dos bugs de concorrência do mundo real, examinando seus padrões, manifestações, estratégias de correção e outras características. Nosso estudo é baseado em 105 bugs de concorrência do mundo real, coletados aleatoriamente de 4 programas de código aberto representativos: MySQL, Apache, Mozilla e OpenOffice. O resultado de nosso estudo inclui muitas descobertas interessantes e implicações para a detecção de bugs de concorrência, testes e design de linguagens de programação concorrente. Pesquisas futuras podem se beneficiar de nosso estudo em vários aspectos. Por exemplo, trabalhos futuros podem projetar novas ferramentas de detecção de bugs para lidar com bugs de várias variáveis e violações de ordem; podem testar em pares as threads do programa concorrente e focar em ordens parciais de pequenos grupos de acessos à memória para aproveitar ao máximo o esforço de teste; podem ter melhores recursos de linguagem para suportar semânticas de "ordem" para facilitar ainda mais a programação concorrente. No futuro, estenderemos nosso estudo para outros tipos de aplicativos do mundo real.
+
+## Referências
+[1] A.-R. Adl-Tabatabai, C. Kozyrakis, and B. Saha. Transactional programming in a multi-core environment. In PPOPP, 2007.
+[2] C. S. Ananian, K. Asanovic, B. C. Kuszmaul, C. E. Leiserson, and S. Lie. Unbounded transactional memory. In HPCA, 2005.
+[3] C. Boyapati, R. Lee, and M. Rinard. Ownership types for safe programming: Preventing data races and deadlocks. In OOPSLA, 2002.
+[4] A. Bron, E. Farchi, Y. Magid, Y. Nir, and S. Ur. Applications of synchronization coverage. In PPoPP, 2005.
+[5] B. D. Carlstrom, A. McDonald, H. Chafi, J. Chung, C. C. Minh, C. Kozyrakis, and K. Olukotun. The atomos transactional programming language. In PLDI ’06, 2006.
+[6] S. Chandra and P. M. Chen. Whither generic recovery from application faults? a fault study using open-source software. In DSN, 2000.
+[7] J.-D. Choi et al. Efficient and precise datarace detection for multithreaded object-oriented programs. In PLDI, 2002.
+[8] A. Chou, J. Yang, B. Chelf, S. Hallem, and D. R. Engler. An empirical study of operating system errors. In SOSP, 2001.
+[9] O. Edelstein, E. Farchi, Y. Nir, G. Ratsaby, and S. Ur. Multi-threaded java program test generation. IBM Systems Journal, 2002.
+[10] D. Engler and K. Ashcraft. RacerX: Effective, static detection of race conditions and deadlocks. In SOSP, 2003.
+[11] E. Farchi, Y. Nir, and S. Ur. Concurrent bug patterns and how to test them. In IPDPS, 2003.
+[12] C. Flanagan and S. N. Freund. Atomizer: a dynamic atomicity checker for multithreaded programs. In POPL, 2004.
+[13] P. Godefroid. Model checking for programming languages using verisoft. In POPL, 1997.
+[14] W. Gu, Z. Kalbarczyk, R. K. Iyer, and Z. Yang. Characterization of linux kernel behavior under errors. In DSN, 2003.
+[15] L. Hammond, V. Wong, M. Chen, B. D. Carlstrom, J. D. Davis, B. Hertzberg, M. K. Prabhu, H. Wijaya, C. Kozyrakis, and K. Olukotun. Transactional memory coherence and consistency. In ISCA, 2004.
+[16] T. Harris and K. Fraser. Language support for lightweight transactions. In OOPSLA, 2003.
+[17] T. Harris, S. Marlow, S. Peyton-Jones, and M. Herlihy. Composable memory transactions. In PPoPP ’05, 2005.
+[18] R. Hastings and B. Joyce. Purify: Fast detection of memory leaks and access errors. In Usenix, 1992.
+[19] Z. Li, S. Lu, S. Myagmar, and Y. Zhou. CP-Miner: A tool for finding copy-paste and related bugs in o perating system code. In OSDI, 2004.
+[20] Z. Li, L. Tan, X. Wang, S. Lu, Y. Zhou, and C. Zhai. Have things changed now?: an empirical study of bug characteristics in modern open source software. In Proceedings of the 1st workshop on Architectural and system support for improving software dependability (ASID’06), 2006.
+[21] S. Lu, W. Jiang, and Y. Zhou. A study of interleaving coverage criteria. In FSE, 2007.
+[22] S. Lu, S. Park, C. Hu, X. Ma, W. Jiang, Z. Li, R. A. Popa, and Y. Zhou. Muvi: Automatically inferring multi-variable access correlations and detecting related semantic and concurrency bugs. In SOSP07, 2007.
+[23] S. Lu, J. Tucek, F. Qin, and Y. Zhou. Avio: Detecting atomicity violations via access interleaving invariants. In ASPLOS, 2006.
+[24] B. McCloskey, F. Zhou, D. Gay, and E. Brewer. Autolocker: synchronization inference for atomic sections. In POPL, 2006.
+[25] M. Moir. Transparent support for wait-free transactions. In 11th International Workshop on Distributed Algorithms, 1997.
+[26] K. E. Moore, J. Bobba, M. J. Moravan, M. D. Hill, and D. A. Wood. Logtm: Log-based transactional memory. In HPCA, 2006.
+[27] J. E. B. Moss and A. L. Hosking. Nested transactional memory: model and architecture sketches. Sci. Comput. Program., 2006.
+[28] M. Musuvathi and S. Qadeer. Iterative context bounding for systematic testing of multithreaded programs. In PLDI, 2007.
+[29] G. C. Necula, S. McPeak, and W. Weimer. CCured: Type-safe retrofitting of legacy code. In POPL, 2002.
+[30] N. Nethercote and J. Seward. Valgrind: A program supervision framework. ENTCS, 2003.
+[31] R. H. B. Netzer and B. P. Miller. Improving the accuracy of data race detection. In PPoPP, 1991.
+[32] T. Ostrand, E. Weyuker, and R. Bell. Predicting the location and number of faults in large software systems. TSE, 2005.
+[33] M. Prvulovic and J. Torrellas. ReEnact: Using thread-level speculation mechanisms to debug data races in multithreaded codes. In ISCA, 2003.
+[34] S. Qadeer and D. Wu. Kiss: keep it simple and sequential. In PLDI, 2004.
+[35] F. Qin, J. Tucek, J. Sundaresan, and Y. Zhou. Rx: Treating bugs as allergies c a safe method to survive software failures. In SOSP, 2005.
+[36] H. E. Ramadan, C. J. Rossbach, D. E. Porter, O. S. Hofmann, A. Bhandari, and E. Witchel. Metatm/txlinux: transactional memory for an operating system. In ISCA, 2007.
+[37] S. Savage, M. Burrows, G. Nelson, P. Sobalvarro, and T. Anderson. Eraser: A dynamic data race detector for multithreaded programs. ACM TOCS, 1997.
+[38] M. Sullivan and R. Chillarege. A comparison of software defects in database management systems and operating systems. In FTCS, 1992.
+[39] R. N. Taylor, D. L. Levine, and C. D. Kelly. Structural testing of concurrent programs. IEEE Trans. Softw. Eng., 1992.
+[40] M. Vaziri, F. Tip, and J. Dolby. Associating synchronization constraints with data in an object-oriented language. In POPL, 2006.
+[41] M. Xu, R. Bod´ık, and M. D. Hill. A serializability violation detector for shared-memory server programs. In PLDI, 2005.
+[42] Y. Yu, T. Rodeheffer, and W. Chen. Racetrack: Efficient detection of data race conditions via adaptive tracking. In SOSP, 2005.
+[43] Z. Li et. al. Have things changed now? – an empirical study of bug characteristics in modern open source software. In ASID workshop in ASPLOS, 2006.
