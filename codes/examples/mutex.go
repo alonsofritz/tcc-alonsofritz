@@ -1,10 +1,3 @@
-package main
-
-import (
-	"fmt"
-	"sync"
-)
-
 var count int
 var mutex sync.Mutex
 
@@ -25,7 +18,6 @@ func decrement() {
 func main() {
 	var arithmetic sync.WaitGroup
 
-	// Increment
 	for i := 0; i < 5; i++ {
 		arithmetic.Add(1)
 		go func() {
@@ -33,8 +25,6 @@ func main() {
 			increment()
 		}()
 	}
-
-	// Decrement
 	for i := 0; i < 5; i++ {
 		arithmetic.Add(1)
 		go func() {

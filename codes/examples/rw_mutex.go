@@ -1,14 +1,3 @@
-package main
-
-import (
-	"fmt"
-	"math"
-	"os"
-	"sync"
-	"text/tabwriter"
-	"time"
-)
-
 func producer(wg *sync.WaitGroup, l sync.Locker) {
 	defer wg.Done()
 	for i := 5; i > 0; i-- {

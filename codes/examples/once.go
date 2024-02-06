@@ -1,36 +1,24 @@
-package main
-
-import (
-	"fmt"
-	"sync"
-)
-
 func main() {
 	var once sync.Once
 
-	// Função que será executada apenas uma vez
 	initializer := func() {
-		fmt.Println("Executando inicialização.")
+		fmt.Println("Initializing...")
 	}
 
-	// Goroutine 1
 	go func() {
 		once.Do(initializer)
-		fmt.Println("Goroutine 1 concluída.")
+		fmt.Println("Hello from Goroutine 1.")
 	}()
 
-	// Goroutine 2
 	go func() {
 		once.Do(initializer)
-		fmt.Println("Goroutine 2 concluída.")
+		fmt.Println("Hello from Goroutine 2.")
 	}()
 
-	// Goroutine 3
 	go func() {
 		once.Do(initializer)
-		fmt.Println("Goroutine 3 concluída.")
+		fmt.Println("Hello from Goroutine 3.")
 	}()
 
-	// Aguarda a conclusão das goroutines
 	select {}
 }

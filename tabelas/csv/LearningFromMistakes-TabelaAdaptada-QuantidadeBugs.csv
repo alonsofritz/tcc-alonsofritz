@@ -1,0 +1,8 @@
+Aplicação,# de Bugs ,,,
+,Não relacionados a Deadlock,,,Deadlock
+,Ordem,Atomicidade,Outros,
+MySQL,14,1,1,9
+Apache,7,6,0,4
+Mozilla,29,15,0,16
+OpenOffice,3,2,1,2
+Total,51,24,2,31

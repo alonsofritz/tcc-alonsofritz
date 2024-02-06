@@ -1,11 +1,3 @@
-package main
-
-import (
-	"fmt"
-	"runtime"
-	"sync"
-)
-
 var counter int
 var wg sync.WaitGroup
 
@@ -17,7 +9,6 @@ func main() {
 	go incrementCounter()
 
 	wg.Wait()
-
 	fmt.Println("Final Counter:", counter)
 }
 
