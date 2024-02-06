@@ -16,3 +16,5 @@
 - [Communicating Sequential Processes](https://www.cs.cmu.edu/~crary/819-f09/Hoare78.pdf)
 - [Concurrent Reading Writing](https://lamport.azurewebsites.net/pubs/rd-wr.pdf)
 
+## Pesquisas
+- https://survey.stackoverflow.co/2023/#most-popular-technologies-new-collab-tools-learn
