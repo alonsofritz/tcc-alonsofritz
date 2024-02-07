@@ -5,10 +5,10 @@ type value struct {
 var wg sync.WaitGroup
 printSum := func(v1, v2 *value) {
 	defer wg.Done()
-	v1.mu.Lock()         // Sec 1
-	defer v1.mu.Unlock() // Sec 2
+	v1.mu.Lock()
+	defer v1.mu.Unlock()
 
-	time.Sleep(2 * time.Second) // Sec 3
+	time.Sleep(2 * time.Second)
 	v2.mu.Lock()
 	defer v2.mu.Unlock()
 	fmt.Printf("sum=%v\n", v1.value+v2.value)
